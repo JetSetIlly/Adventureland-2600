@@ -1,0 +1,10 @@
+printf replaced with _print
+
+all integer division replaced with calls to div() and modulo with mod()
+
+main() removed and replaced with initAdvland() and stepAdvland()
+
+replaced all includes with a single include to advland_helpers.h
+
+prompt removed from beginning of get_input() function and replaced with a
+prompt() function that is called at the end of initAdvland() and stepAdvland()

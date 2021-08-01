@@ -1,0 +1,15 @@
+The port of ADVEN1.BAS to ADVLAND.C+ADVLAND.H was done for fun, and was not
+intended for publication. Errors may (or may not) occur during play. However,
+I have completed the game several times, and it plays ok to my knowledge.
+
+I do not take any responsibilities for any damages which may occur if you
+choose to use the included files.
+
+The files were compiled by Borland Turbo C version 2.0, and compiles without
+warnings with standard settings.
+
+If you modify this program, or use part of it in your own code, please mail
+me a copy.
+
+Morten Lohre
+(edb_morten@debet.nhh.no)
