@@ -65,7 +65,6 @@ void initAdvland(void)
   clrscr();
   look();
   NV[0] = 0;
-  prompt();
 }
 
 void stepAdvland() {

@@ -32,6 +32,7 @@
 	ORG $80
 SCANLINE ds 1
 FRAMENUM ds 1
+_THREE_COUNT_STATE ds 1
 
 ; ----------------------------------
 ; ARM 
@@ -59,6 +60,41 @@ _DS_COL6 = DS6DATA
 _DS_COL7 = DS7DATA
 _DS_COL8 = DS8DATA
 _DS_COL9 = DS9DATA
+_DS_COL10 = DS10DATA
+_DS_COL11 = DS11DATA
+_DS_COL12 = DS12DATA
+_DS_COL13 = DS13DATA
+_DS_COL14 = DS14DATA
+
+
+; ----------------------------------
+; THREE COUNT MACROS
+	MAC THREE_COUNT_SETUP_X
+		; require 8bit memory address labelled _THREE_COUNT_STATE
+		LDX #$2									; 2
+		STX _THREE_COUNT_STATE	; 3
+		; 5 cycles
+	ENDM
+
+	MAC THREE_COUNT_UPDATE_X
+		; require 8bit memory address labelled _THREE_COUNT_STATE
+		LDX _THREE_COUNT_STATE	; 3
+		DEX											; 2
+		BPL .store_cycle_count	; 2/3
+		LDX #$2									; 2
+.store_cycle_count
+		STX _THREE_COUNT_STATE	; 3
+		; 12/13 cycles
+	ENDM
+
+	MAC THREE_COUNT_CMP_X
+		; require 8bit memory address labelled _THREE_COUNT_STATE
+		; result - branch on BEQ, BMI and BPL - check for equality before positivity (equality implies positivity)
+		LDX _THREE_COUNT_STATE	; 3
+		DEX											; 2
+		; 5 cycles
+	ENDM
+
 
 ; ----------------------------------
 ; SETUP
@@ -70,6 +106,7 @@ _DS_COL9 = DS9DATA
 
 init
 	CLEAN_START
+	THREE_COUNT_SETUP_X
 
 	; Fast Fetch mode must be turned on so we can read the datastreams
 	ldx #FASTON
@@ -135,12 +172,11 @@ vblank
 	ldx #$ff
 	stx CALLFN
 
-	inc FRAMENUM
-	lda FRAMENUM
-	and $01
-	beq setPositionsEvenFrame
+	THREE_COUNT_CMP_X
+	beq setPositionsB
+	bpl setPositionsC
 
-setPositionsOddFrame
+setPositionsA
 	sta WSYNC
 	sta RESP0
 	nop
@@ -159,7 +195,7 @@ setPositionsOddFrame
 	stx HMP1
 	jmp vblankWaitStart
 
-setPositionsEvenFrame
+setPositionsB
 	sta WSYNC
 	nop
 	nop
@@ -201,6 +237,63 @@ setPositionsEvenFrame
 	stx HMP0
 	ldx #$d0
 	stx HMP1
+	jmp vblankWaitStart
+
+setPositionsC
+	sta WSYNC
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop 0
+	sta RESP0
+	sta WSYNC
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop 0
+	sta RESP1
+	ldx #$e0
+	stx HMP0
+	ldx #$c0
+	stx HMP1
+	jmp vblankWaitStart
 
 vblankWaitStart
 	; small horizontal adjustment
@@ -214,11 +307,11 @@ vblankWait
 	sta WSYNC
 	stx VBLANK ; VBLANK off
 
-	lda FRAMENUM
-	and $01
-	beq screenEvenFrame
+	THREE_COUNT_CMP_X
+	beq screenB
+	bpl screenC
 
-screenOddFrame
+screenA
 	sta WSYNC
 	lda #_DS_COL0
 	sta GRP0
@@ -237,9 +330,9 @@ screenOddFrame
 	; scanline check for end of visible screen
 	dec SCANLINE
 	beq endScreen
-	jmp screenOddFrame
+	jmp screenA
 
-screenEvenFrame
+screenB
 	sta WSYNC
 	lda #_DS_COL5
 	sta GRP0
@@ -266,7 +359,42 @@ screenEvenFrame
 	; scanline check for end of visible screen
 	dec SCANLINE
 	beq endScreen
-	jmp screenEvenFrame
+	jmp screenB
+
+screenC
+	sta WSYNC
+	lda #_DS_COL10
+	sta GRP0
+	lda #_DS_COL11
+	sta GRP1
+	lda #_DS_COL13
+	tax
+	lda #_DS_COL14
+	tay
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	lda #_DS_COL12
+	sta GRP0
+	stx GRP1
+	sty GRP0
+
+	; scanline check for end of visible screen
+	dec SCANLINE
+	beq endScreen
+	jmp screenC
 
 endScreen
 	ldx #$2 ; prep for VBLANK on
@@ -277,6 +405,8 @@ endScreen
 	sta WSYNC
 
 overscan
+	THREE_COUNT_UPDATE_X
+
 	ldx INPT4
 	ldx #<_DS_TO_ARM
 	stx DSPTR
@@ -326,3 +456,8 @@ _COL6_DATA ds 192
 _COL7_DATA ds 192
 _COL8_DATA ds 192
 _COL9_DATA ds 192
+_COL10_DATA ds 192
+_COL11_DATA ds 192
+_COL12_DATA ds 192
+_COL13_DATA ds 192
+_COL14_DATA ds 192

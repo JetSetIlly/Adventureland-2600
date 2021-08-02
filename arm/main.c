@@ -7,6 +7,7 @@
 // adventureland functions
 void initAdvland();
 void stepAdvland();
+void welcome();
 
 // local functions
 void initialise();
@@ -15,7 +16,7 @@ int printCharAt(const char c, const int x, const int y);
 int printChar(const char c);
 
 // the maximum number of characters that can be be displayed on a line
-const int charsPerRow = 20;
+const int charsPerRow = 30;
 const int charsPerCol = 32;
 const int lineSpacing = 1;
 
@@ -162,6 +163,11 @@ void repoint() {
     setPointer(_DS_COL7, _COL7_DATA);
     setPointer(_DS_COL8, _COL8_DATA);
     setPointer(_DS_COL9, _COL9_DATA);
+    setPointer(_DS_COL10, _COL10_DATA);
+    setPointer(_DS_COL11, _COL11_DATA);
+    setPointer(_DS_COL12, _COL12_DATA);
+    setPointer(_DS_COL13, _COL13_DATA);
+    setPointer(_DS_COL14, _COL14_DATA);
 }
 
 // returns:
@@ -306,6 +312,57 @@ int printCharAt(const char c, const int x, const int y) {
 			case 19:
 				RAM[_COL9_DATA + sl] &= 0xf0;
 				RAM[_COL9_DATA + sl] |= b << 1; 
+				break;
+		}
+
+		switch (x) {
+			case 20:
+				RAM[_COL10_DATA + sl] &= 0x0f;
+				RAM[_COL10_DATA + sl] |= b << 5; 
+				break;
+			case 21:
+				RAM[_COL10_DATA + sl] &= 0xf0;
+				RAM[_COL10_DATA + sl] |= b << 1; 
+				break;
+
+			case 22:
+				RAM[_COL11_DATA + sl] &= 0x0f;
+				RAM[_COL11_DATA + sl] |= b << 5; 
+				break;
+			case 23:
+				RAM[_COL11_DATA + sl] &= 0xf0;
+				RAM[_COL11_DATA + sl] |= b << 1; 
+				break;
+		}
+
+		switch (x) {
+			case 24:
+				RAM[_COL12_DATA + sl] &= 0x0f;
+				RAM[_COL12_DATA + sl] |= b << 5; 
+				break;
+			case 25:
+				RAM[_COL12_DATA + sl] &= 0xf0;
+				RAM[_COL12_DATA + sl] |= b << 1; 
+				break;
+
+			case 26:
+				RAM[_COL13_DATA + sl] &= 0x0f;
+				RAM[_COL13_DATA + sl] |= b << 5; 
+				break;
+			case 27:
+				RAM[_COL13_DATA + sl] &= 0xf0;
+				RAM[_COL13_DATA + sl] |= b << 1; 
+				break;
+		}
+
+		switch (x) {
+			case 28:
+				RAM[_COL14_DATA + sl] &= 0x0f;
+				RAM[_COL14_DATA + sl] |= b << 5; 
+				break;
+			case 29:
+				RAM[_COL14_DATA + sl] &= 0xf0;
+				RAM[_COL14_DATA + sl] |= b << 1; 
 				break;
 		}
 

@@ -1,4 +1,9 @@
 #define _COL0_DATA                0x0004
+#define _COL10_DATA               0x0784
+#define _COL11_DATA               0x0844
+#define _COL12_DATA               0x0904
+#define _COL13_DATA               0x09c4
+#define _COL14_DATA               0x0a84
 #define _COL1_DATA                0x00c4
 #define _COL2_DATA                0x0184
 #define _COL3_DATA                0x0244
@@ -10,6 +15,11 @@
 #define _COL9_DATA                0x06c4
 #define _DS_COL0                  0x0000
 #define _DS_COL1                  0x0001
+#define _DS_COL10                 0x000a
+#define _DS_COL11                 0x000b
+#define _DS_COL12                 0x000c
+#define _DS_COL13                 0x000d
+#define _DS_COL14                 0x000e
 #define _DS_COL2                  0x0002
 #define _DS_COL3                  0x0003
 #define _DS_COL4                  0x0004
@@ -24,3 +34,4 @@
 #define _FN_GAME_VB               0x0001
 #define _FN_INIT                  0x0000
 #define _RUN_FUNC                 0x0000
+#define _THREE_COUNT_STATE        0x0082
