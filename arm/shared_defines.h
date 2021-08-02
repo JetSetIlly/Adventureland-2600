@@ -1,6 +1,12 @@
- #define screenA 61645
- #define screenB 61680
- #define screenEnd 61719
- #define screenA 61645
- #define screenB 61680
- #define screenEnd 61719
+#define _CALFN_PARAMETERS         0x0000
+#define _DATASTREAM_BASE_REG      0x0000
+#define _DATASTREAMS_MEMTOP       0x0acc
+#define _DATASTREAMS_ORIGIN       0x0004
+#define _DATASTREAMS_SIZE         0x0ac8
+#define _FN_GAME_VB               0x0001
+#define _FN_INIT                  0x0000
+#define _INPUT_KEY                0x0001
+#define _NUM_DATASTREAMS          0x000f
+#define _RUN_FUNC                 0x0000
+#define _SCANLINES_IN_DATASTREAM  0x00b8
+#define _THREE_COUNT_STATE        0x0083

@@ -16,7 +16,7 @@ CFLAGS="$CFLAGS_NOWARN -Wall"
 
 function clean {
 	rm arm/main.o arm/main.elf arm/main.bin arm/custom/custom.o 2> /dev/null
-	rm arm/shared_ram.h 2> /dev/null
+	rm arm/shared_defines.h 2> /dev/null
 	rm 6507/cart.lst 2> /dev/null
 	rm "$PROJECTNAME.bin" "$PROJECTNAME.sym" 2> /dev/null
 }
@@ -80,7 +80,7 @@ touch arm/main.bin
 assemble6507
 
 # extract exported symbols from symbols file
-awk '/^_/ { printf "#define %-25s 0x%s\n", $1, $2 }' "$PROJECTNAME.sym" > arm/shared_ram.h
+awk '/^_/ { printf "#define %-25s 0x%s\n", $1, $2 }' "$PROJECTNAME.sym" > arm/shared_defines.h
 
 # real compilation/assembly
 compileArm

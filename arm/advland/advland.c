@@ -65,6 +65,7 @@ void initAdvland(void)
   clrscr();
   look();
   NV[0] = 0;
+  prompt();
 }
 
 void stepAdvland() {
@@ -97,7 +98,7 @@ void prompt() {
 /* Empty keyboard buffer */
 void empty_keyboardbuffer(void)
 {
-  while (kbhit()!=0) getch();
+  while (kbhit()!=0) _getch();
 }
 
 /* Empty keyboard, get Y(es) or N(o), _printf character with carriage return */
@@ -108,7 +109,7 @@ int yes_no(void)
   empty_keyboardbuffer();  /* empty keyboardbuffer */
   do
   {
-    ch = getch();
+    ch = _getch();
     if (ch > 96) ch = ch - 32;
   } while (ch!=89 && ch!=78);
   _printf("%c\n",ch);
@@ -132,7 +133,7 @@ void welcome(void)
   _printf("HAPPY ADVENTURING!!!\n\n\n\n\n");
   empty_keyboardbuffer();
   _printf("************************** Press any key to continue **************************");
-  /* while (getch()==0); */
+  /* while (_getch()==0); */
   /* clrscr(); */
 }
 

@@ -30,12 +30,35 @@
 
 	SEG.U VCS_RAM
 	ORG $80
-SCANLINE ds 1
-FRAMENUM ds 1
+SCANLINE	ds 1
+FRAMENUM	ds 1
+KEYPAD		ds 1
 _THREE_COUNT_STATE ds 1
 
+
 ; ----------------------------------
-; ARM 
+; SCREEN TOPOLOGY
+
+; atari safe timings: values assume that TIM64T timer is started immediately
+; before the first WSYNC that leads into the screen region.
+
+VBLANKTIMER = 48 ; starts main screen at scanline 40
+OVERSCANTIMER = 31 
+
+; the scanlines in the visible part of the screen are counted manually. ideally
+; this would be 192 but the keypad reading code is CPU expensive and it will
+; overrun the overscan timer. 184 is the highest value that is a multiple 4 and
+; that keeps the kernel within NTSC spec.
+VISIBLE_SCANLINES = 184
+
+; check that VISIBLE_SCANLINES value is a multiple of four. issue warning if is not
+#if VISIBLE_SCANLINES % 4 != 0
+	echo "VISIBLE_SCANLINES shoule be a multiple of 4"
+#endif
+
+
+; ----------------------------------
+; ARM - BINARY INCLUSION
 
 	SEG ARM
 	ORG $0000
@@ -44,31 +67,35 @@ _THREE_COUNT_STATE ds 1
 	ORG $0800
 	INCBIN arm/main.bin
 
-; program functions
+
+; ----------------------------------
+; ARM - SHARED DEFINITIONS
+
+; program functions (there is no overscan function. keypad reading is very
+; expensive). these values are passed to the ARM program as the first
+; parameter. see _CALFN_PARAMETERS values below
 _FN_INIT = 0 
 _FN_GAME_VB = 1
-_FN_GAME_OS = 2
 
-; data stream aliases
-_DS_COL0 = DS0DATA
-_DS_COL1 = DS1DATA
-_DS_COL2 = DS2DATA
-_DS_COL3 = DS3DATA
-_DS_COL4 = DS4DATA
-_DS_COL5 = DS5DATA
-_DS_COL6 = DS6DATA
-_DS_COL7 = DS7DATA
-_DS_COL8 = DS8DATA
-_DS_COL9 = DS9DATA
-_DS_COL10 = DS10DATA
-_DS_COL11 = DS11DATA
-_DS_COL12 = DS12DATA
-_DS_COL13 = DS13DATA
-_DS_COL14 = DS14DATA
+; number of scanlines in visible portion of screen. the ARM program will use
+; this to clear memory and to figure out how many rows of glyphs are possible
+_SCANLINES_IN_DATASTREAM = VISIBLE_SCANLINES
+
+; the number of data streams required for the text renderer
+; 
+; note that the ARM program may pack multiple glyphs into a single datastream
+; but we don't need to know about this in in the 6507 program
+_NUM_DATASTREAMS = 15
+
+; the first datastream to use for column retrieval. the ARM program uses
+; consecutive datastreams up to _NUM_DATASTREAMS. in this 6507 program we
+; reference DS0DATA, DS1DATA, DS2DATA etc.
+_DATASTREAM_BASE_REG = DS0DATA
 
 
 ; ----------------------------------
 ; THREE COUNT MACROS
+
 	MAC THREE_COUNT_SETUP_X
 		; require 8bit memory address labelled _THREE_COUNT_STATE
 		LDX #$2									; 2
@@ -97,7 +124,7 @@ _DS_COL14 = DS14DATA
 
 
 ; ----------------------------------
-; SETUP
+; SETUP OF CARTRIDGE
 
 	; start of cartridge
 	SEG
@@ -107,19 +134,23 @@ _DS_COL14 = DS14DATA
 init
 	CLEAN_START
 	THREE_COUNT_SETUP_X
+	
+	; left keypad on
+    lda    #$f0
+    sta    SWACNT        ; output for 4 bits for left port
 
 	; Fast Fetch mode must be turned on so we can read the datastreams
 	ldx #FASTON
 	stx SETMODE
 	
 	; set origin for DSWRITE
-	ldx #<_DS_TO_ARM
+	ldx #<_CALFN_PARAMETERS
 	stx DSPTR
-	ldx #>_DS_TO_ARM
+	ldx #>_CALFN_PARAMETERS
 	stx DSPTR
 	ldx #_FN_INIT
 	stx DSWRITE 
-	ldx #$FF 
+	ldx #$ff 
 	stx CALLFN
 
 	ldx #$f0
@@ -137,16 +168,7 @@ init
 
 
 ; ----------------------------------
-; MAIN
-
-; atari safe timings: values assume that TIM64T timer is started immediately
-; before the first WSYNC that leads into the screen region.
-
-VBLANKTIMER = 48 ; starts main screen at scanline 40
-OVERSCANTIMER = 31 ; starts vblank at scanline 259 (first WSYNC of VBLANK takes it to 259)
-
-; the scanlines in the visible part of the screen are counted manually
-VISIBLESCANLINES = 192 
+; VSYNC/VBLANK - CALLFN & SPRITE POSITIONING
 
 vsync ; x should be set to #$2
 	sta WSYNC
@@ -156,22 +178,25 @@ vsync ; x should be set to #$2
 	stx VSYNC
 	sta WSYNC
 	stx VSYNC
-	ldx #VISIBLESCANLINES
+	ldx #VISIBLE_SCANLINES
 	stx SCANLINE ; reset some houskeeping RAM locations
 	sty TIM64T ; load VBLANKTIMER
 	sta WSYNC
 	stx VSYNC ; VSYNC off
 
 vblank
-	ldx #<_DS_TO_ARM
+	ldx #<_CALFN_PARAMETERS
 	stx DSPTR
-	ldx #>_DS_TO_ARM
+	ldx #>_CALFN_PARAMETERS
 	stx DSPTR
 	ldx #_FN_GAME_VB
+	stx DSWRITE
+	ldx KEYPAD
 	stx DSWRITE
 	ldx #$ff
 	stx CALLFN
 
+	THREE_COUNT_UPDATE_X
 	THREE_COUNT_CMP_X
 	beq setPositionsB
 	bpl setPositionsC
@@ -307,22 +332,29 @@ vblankWait
 	sta WSYNC
 	stx VBLANK ; VBLANK off
 
+	; first line starts with a WSYNC so decrease scanline count immediately
+	dec SCANLINE
+
 	THREE_COUNT_CMP_X
 	beq screenB
 	bpl screenC
 
+
+; ----------------------------------
+; MAIN DISPLAY RENDERING
+
 screenA
 	sta WSYNC
-	lda #_DS_COL0
+	lda #_DATASTREAM_BASE_REG+0
 	sta GRP0
-	lda #_DS_COL1
+	lda #_DATASTREAM_BASE_REG+1
 	sta GRP1
-	lda #_DS_COL3
+	lda #_DATASTREAM_BASE_REG+3
 	tax
-	lda #_DS_COL4
+	lda #_DATASTREAM_BASE_REG+4
 	tay
 	nop 0
-	lda #_DS_COL2
+	lda #_DATASTREAM_BASE_REG+2
 	sta GRP0
 	stx GRP1
 	sty GRP0
@@ -334,13 +366,13 @@ screenA
 
 screenB
 	sta WSYNC
-	lda #_DS_COL5
+	lda #_DATASTREAM_BASE_REG+5
 	sta GRP0
-	lda #_DS_COL6
+	lda #_DATASTREAM_BASE_REG+6
 	sta GRP1
-	lda #_DS_COL8
+	lda #_DATASTREAM_BASE_REG+8
 	tax
-	lda #_DS_COL9
+	lda #_DATASTREAM_BASE_REG+9
 	tay
 	nop
 	nop
@@ -351,7 +383,7 @@ screenB
 	nop
 	nop
 	nop
-	lda #_DS_COL7
+	lda #_DATASTREAM_BASE_REG+7
 	sta GRP0
 	stx GRP1
 	sty GRP0
@@ -363,13 +395,13 @@ screenB
 
 screenC
 	sta WSYNC
-	lda #_DS_COL10
+	lda #_DATASTREAM_BASE_REG+10
 	sta GRP0
-	lda #_DS_COL11
+	lda #_DATASTREAM_BASE_REG+11
 	sta GRP1
-	lda #_DS_COL13
+	lda #_DATASTREAM_BASE_REG+13
 	tax
-	lda #_DS_COL14
+	lda #_DATASTREAM_BASE_REG+14
 	tay
 	nop
 	nop
@@ -386,7 +418,7 @@ screenC
 	nop
 	nop
 	nop
-	lda #_DS_COL12
+	lda #_DATASTREAM_BASE_REG+12
 	sta GRP0
 	stx GRP1
 	sty GRP0
@@ -395,6 +427,10 @@ screenC
 	dec SCANLINE
 	beq endScreen
 	jmp screenC
+
+
+; ----------------------------------
+; OVERSCAN - KEYPAD DETECTION
 
 endScreen
 	ldx #$2 ; prep for VBLANK on
@@ -405,20 +441,31 @@ endScreen
 	sta WSYNC
 
 overscan
-	THREE_COUNT_UPDATE_X
+	; read keypad
+    lda    #$ff
+    ldx    #$0c
+    clc
+newKeypadRow
+    ror
+    sta    SWCHA
+    ldy    #$78
+waitKeypad
+    dey
+    bne    waitKeypad
 
-	ldx INPT4
-	ldx #<_DS_TO_ARM
-	stx DSPTR
-	ldx #>_DS_TO_ARM
-	stx DSPTR
-	ldx #_FN_GAME_OS
-	stx DSWRITE ; _RUN_FUNC
-	ldx INPT4
-	stx DSWRITE ; _FIREBUTTON
-	ldx #$FF
-	stx CALLFN
-
+    bit    INPT4
+    bpl    endKeypad
+    dex
+    bit    INPT1
+    bpl    endKeypad
+    dex
+    bit    INPT0
+    bpl    endKeypad
+    dex
+    bne    newKeypadRow
+endKeypad
+	stx    KEYPAD
+	
 	ldx #$2 ; prep for VSYNC on
 overscanWait
 	bit TIMINT ; using OVERSCANTIMER
@@ -437,27 +484,21 @@ overscanWait
 
 
 ; ----------------------------------
-; SHARED RAM
+; ARM - PARAMETERS & DATASTREAMS
+
 	SEG.U SHARED_RAM
 	ORG $0000
 
-_DS_TO_ARM
+_CALFN_PARAMETERS
 _RUN_FUNC ds 1
-_FIREBUTTON ds 1
+_INPUT_KEY ds 1 ; not used if _RUN_FUNC == _FN_INIT
 
+; the first data stream begins here. all datastreams are adjacent in memory
 	align 4
-_COL0_DATA ds 192
-_COL1_DATA ds 192
-_COL2_DATA ds 192
-_COL3_DATA ds 192
-_COL4_DATA ds 192
-_COL5_DATA ds 192
-_COL6_DATA ds 192
-_COL7_DATA ds 192
-_COL8_DATA ds 192
-_COL9_DATA ds 192
-_COL10_DATA ds 192
-_COL11_DATA ds 192
-_COL12_DATA ds 192
-_COL13_DATA ds 192
-_COL14_DATA ds 192
+_DATASTREAMS_ORIGIN ds _SCANLINES_IN_DATASTREAM
+
+; the number of bytes required for all data stream collectively
+_DATASTREAMS_SIZE = _NUM_DATASTREAMS * _SCANLINES_IN_DATASTREAM
+
+; the extent of memory used collectively by all data streams
+_DATASTREAMS_MEMTOP = _DATASTREAMS_ORIGIN + (_NUM_DATASTREAMS * _SCANLINES_IN_DATASTREAM)

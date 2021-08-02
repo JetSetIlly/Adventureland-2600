@@ -1,10 +1,12 @@
-printf replaced with _print
+replaced all includes with a single include to advland_helpers.h
+	- conio.h functions prototyped and expected to be implemented elsewhere
+	- stdlib functions prototyped with a leading underscore. for example
+	  print() is now _printf().
 
-all integer division replaced with calls to div() and modulo with mod()
+all integer division replaced with calls to divu() and modulo with modu()
+	- implementation in div.h in same include path as advland_helpers.h
 
 main() removed and replaced with initAdvland() and stepAdvland()
-
-replaced all includes with a single include to advland_helpers.h
 
 prompt removed from beginning of get_input() function and replaced with a
 prompt() function that is called at the end of initAdvland() and stepAdvland()
