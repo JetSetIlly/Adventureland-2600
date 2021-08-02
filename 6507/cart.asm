@@ -122,9 +122,9 @@ init
 	ldx #$FF 
 	stx CALLFN
 
-	ldx #$00
+	ldx #$f0
 	stx COLUBK
-	ldx #$0f
+	ldx #$fd
 	stx COLUP0
 	stx COLUP1
 	ldx #03
