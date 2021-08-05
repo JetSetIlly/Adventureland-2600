@@ -11,7 +11,9 @@ void welcome();
 // local functions
 void initialise();
 void setDataStreams();
-void addToInputString(int key);
+int addToInputString(int key);
+void printInputString();
+void printInputCursor();
 int updateScr(const char c, const int x, const int y);
 int printChar(const char c);
 void nextOutputLine();
@@ -41,16 +43,18 @@ const int numberAdj = 22;
 // grouping these in the same order as the ASCII table although arguably that
 // would make for easier conversion - requiring the code to explicitly map the
 // ASCII to the glyph makes for clearer code IMO
-const int spaceChar = 36;
-const int dotChar = 37;
-const int commaChar = 38;
-const int apostropheChar = 39;
-const int ampersandChar = 40;
-const int hyphenChar = 41;
-const int asteriskChar = 42;
-const int questionMarkChar = 43;
-const int openParenChar = 44;
-const int closeParenChar = 45;
+const int spaceGlyph = 36;
+const int dotGlyph = 37;
+const int commaGlyph = 38;
+const int apostropheGlyph = 39;
+const int ampersandGlyph = 40;
+const int hyphenGlyph = 41;
+const int asteriskGlyph = 42;
+const int questionMarkGlyph = 43;
+const int openParenGlyph = 44;
+const int closeParenGlyph = 45;
+const int underscoreGlyph = 46;
+const int cursorGlyph = 47;
 
 const unsigned char glyphs[] = {
 	2,5,7,5,5, // A
@@ -99,26 +103,37 @@ const unsigned char glyphs[] = {
 	7,1,2,0,2, // question mark
 	1,2,2,2,1, // open parenthesis
 	4,2,2,2,4, // close parenthesis
+	0,0,0,0,7, // underscore
+	7,7,7,7,7, // cursor block
 };
 
 // the location on the screen for the next output character
 int outputX; 
 int outputY;
 
-// maximum number of characters in the input string. note that this has to
-// CHARS_PER_ROW (or less I suppose) in order for text rendering to work as
-// intended
-#define MAX_INPUT_CHARS CHARS_PER_ROW
+// maximum number of characters in the input string. note that this has to be
+// CHARS_PER_ROW (or less) in order for text rendering to work as intended
+//
+// the -1 is for the prompt character
+#define MAX_INPUT_CHARS CHARS_PER_ROW-1
 
 // the input string returned by gets(), which is called by stepAdvland()
 char input[MAX_INPUT_CHARS];
+
+// the index to be used next on key input. this is also the position of the
+// cursor for display purposes
 int inputIdx = 0;
 
 // previous key to be pressed. we use this to prevent key repetition.
 int prevInputKey = -1;
 
-// indicates whether stepAdvland() should be called on the next VBLANK
-int commitInput = 0;
+// the last key pressed. distinct from prevInputKey. we use this to cycle
+// through available key options in the group.
+int keyGroup = -1;
+
+// the next option in the keyGroup to use. -1 indicates that nothing has yet
+// been done with the current cursor position. 
+int keyGroupOpt = -1;
 
 int main() {
 	switch (RAM[_RUN_FUNC]) {
@@ -129,24 +144,27 @@ int main() {
 			break;
 		case _FN_GAME_VB:
 			{
-				int key;
-				key = RAM[_INPUT_KEY];
+				int commit = 0;
+				int key = RAM[_INPUT_KEY];
+
 				if (key != prevInputKey && key > 0) {
-					addToInputString(key);
+					commit = addToInputString(key);
+					printInputString();
 				}
 				prevInputKey = key;
 
-				if (commitInput == 1) {
+				if (commit) {
 					// three newlines before continuing 
 					nextOutputLine();
 					nextOutputLine();
 					nextOutputLine();
 
 					stepAdvland();
-					commitInput = 0;
 					nextOutputLine();
 				}
 				setDataStreams();
+
+				printInputCursor();
 			}
 			break;
 	}
@@ -172,43 +190,207 @@ void setDataStreams() {
 	}
 }
 
-void addToInputString(int key) {
+int addToInputString(int key) {
 	// hash key. commit input
 	if (key == 12) {
-		commitInput = 1;
-		return;
+		keyGroup = -1;
+		keyGroupOpt = 0;
+		return 1;
 	}
 
 	// asterisk key. delete last character
 	if (key == 10) {
+		keyGroup = -1;
+		keyGroupOpt = -1;
 		if (inputIdx > 0) {
 			inputIdx --;
 		}
-		input[inputIdx] = ' ';
-	} else {
-		if (inputIdx >= MAX_INPUT_CHARS) {
-			return;
-		}
-
-		if (key >= 1 && key <= 9) {
-			// 48 is the ASCII value for 1
-			input[inputIdx] = key+48;
-		} else if (key == 11) {
-			input[inputIdx] = '0';
-		}
-
-		inputIdx++;
+		return 0;
 	}
 
+	// no input past maximum length
+	if (inputIdx >= MAX_INPUT_CHARS) {
+		return 0;
+	}
+
+	// if key is one then commit last key group
+	if (key == 1) {
+		keyGroup = key;
+		keyGroupOpt = -1;
+		return 0;
+	}
+	
+	// update key group
+	if (key != keyGroup) {
+		keyGroupOpt = 0;
+	} else if (inputIdx > 0) {
+		// if this key is in the same key group as previous key then overwrite
+		// the previous input
+		inputIdx--;
+	}
+	keyGroup = key;
+
+	// most key groups have 3 options but some have a different number. we'll
+	// update and use this value to cycle the 
+	int numOpts = 2;
+
+	switch (keyGroup) {
+		case 2:
+			switch (keyGroupOpt) {
+				case 0:
+					input[inputIdx] = 'A';
+					break;
+				case 1:
+					input[inputIdx] = 'B';
+					break;
+				case 2:
+					input[inputIdx] = 'C';
+					break;
+			}
+			break;
+		case 3:
+			switch (keyGroupOpt) {
+				case 0:
+					input[inputIdx] = 'D';
+					break;
+				case 1:
+					input[inputIdx] = 'E';
+					break;
+				case 2:
+					input[inputIdx] = 'F';
+					break;
+			}
+			break;
+		case 4:
+			switch (keyGroupOpt) {
+				case 0:
+					input[inputIdx] = 'G';
+					break;
+				case 1:
+					input[inputIdx] = 'H';
+					break;
+				case 2:
+					input[inputIdx] = 'I';
+					break;
+			}
+			break;
+	}
+	switch (keyGroup) {
+		case 5:
+			switch (keyGroupOpt) {
+				case 0:
+					input[inputIdx] = 'J';
+					break;
+				case 1:
+					input[inputIdx] = 'K';
+					break;
+				case 2:
+					input[inputIdx] = 'L';
+					break;
+			}
+			break;
+		case 6:
+			switch (keyGroupOpt) {
+				case 0:
+					input[inputIdx] = 'M';
+					break;
+				case 1:
+					input[inputIdx] = 'N';
+					break;
+				case 2:
+					input[inputIdx] = 'O';
+					break;
+			}
+			break;
+		case 7:
+			switch (keyGroupOpt) {
+				case 0:
+					input[inputIdx] = 'P';
+					break;
+				case 1:
+					input[inputIdx] = 'Q';
+					break;
+				case 2:
+					input[inputIdx] = 'R';
+					break;
+				case 3:
+					input[inputIdx] = 'S';
+					break;
+			}
+			numOpts = 3;
+			break;
+	}
+	switch (keyGroup) {
+		case 8:
+			switch (keyGroupOpt) {
+				case 0:
+					input[inputIdx] = 'T';
+					break;
+				case 1:
+					input[inputIdx] = 'U';
+					break;
+				case 2:
+					input[inputIdx] = 'V';
+					break;
+			}
+			break;
+		case 9:
+			switch (keyGroupOpt) {
+				case 0:
+					input[inputIdx] = 'W';
+					break;
+				case 1:
+					input[inputIdx] = 'X';
+					break;
+				case 2:
+					input[inputIdx] = 'Y';
+					break;
+				case 3:
+					input[inputIdx] = 'Z';
+					break;
+			}
+			numOpts = 3;
+			break;
+
+		// case 10 has been handled (backspace)
+		
+		case 11:
+			// don't allow space as the first character in the input
+			if (inputIdx == 0) {
+				return 0;
+			}
+
+			input[inputIdx] = ' ';
+			numOpts = 0;
+			break;
+
+		// case 12 has been handled (return/commit)
+	}
+
+	keyGroupOpt++;
+	if (keyGroupOpt > numOpts) {
+		keyGroupOpt = 0;
+	}
+
+	inputIdx++;
+
+	return 0;
+}
+
+void printInputString() {
 	// print current input string
 	for (int x = 0; x < inputIdx; x ++) {
 		updateScr(input[x], x, outputY+1);
 	}
 
 	// blank rest of line with space char
-	for (int x = inputIdx; x < MAX_INPUT_CHARS; x ++) {
+	for (int x = inputIdx; x < CHARS_PER_ROW; x ++) {
 		updateScr(' ', x, outputY+1);
 	}
+}
+
+void printInputCursor() {
+	updateScr(0xff, inputIdx, outputY+1);
 }
 
 // add a character to the screen buffer at the character x/y position
@@ -218,15 +400,20 @@ void addToInputString(int key) {
 //	1 if it was
 //	2 for newline
 int updateScr(const char c, const int x, const int y) {
-	char g = spaceChar;
+	int g = spaceGlyph;
 
 	// convert char to glyph
 	if (c == '\n') {
 		return 2;
 	}
 
+	// don't print out of range
+	if (x >= CHARS_PER_ROW) {
+		return 0;
+	}
+
 	if (c == ' ') {
-		g = spaceChar;
+		g = spaceGlyph;
 	} else if (c >= '0' && c <= '9') {
 		g = c-numberAdj;
 	} else if (c >= 'A' && c <= 'Z') {
@@ -234,23 +421,27 @@ int updateScr(const char c, const int x, const int y) {
 	} else if (c >= 'a' && c <= 'z') {
 		g = c-lowerCaseAdj;
 	} else if (c == '.') {
-		g = dotChar;
+		g = dotGlyph;
 	} else if (c == ',') {
-		g = commaChar;
+		g = commaGlyph;
 	} else if (c == '\'') {
-		g = apostropheChar;
+		g = apostropheGlyph;
 	} else if (c == '&') {
-		g = ampersandChar;
+		g = ampersandGlyph;
 	} else if (c == '-') {
-		g = hyphenChar;
+		g = hyphenGlyph;
 	} else if (c == '*') {
-		g = asteriskChar;
+		g = asteriskGlyph;
 	} else if (c == '?') {
-		g = questionMarkChar;
+		g = questionMarkGlyph;
 	} else if (c == '(' || c == '[' || c == '{') {
-		g = openParenChar;
+		g = openParenGlyph;
 	} else if (c == ')' || c == ']' || c == '}') {
-		g = closeParenChar;
+		g = closeParenGlyph;
+	} else if (c == '_') {
+		g = underscoreGlyph;
+	} else if (c == 0xff) {
+		g = cursorGlyph;
 	} else if (c == '\0') {
 		return 0;
 	}
