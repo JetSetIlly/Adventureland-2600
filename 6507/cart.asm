@@ -493,12 +493,12 @@ _CALFN_PARAMETERS
 _RUN_FUNC ds 1
 _INPUT_KEY ds 1 ; not used if _RUN_FUNC == _FN_INIT
 
-; the first data stream begins here. all datastreams are adjacent in memory
-	align 4
-_DATASTREAMS_ORIGIN ds _SCANLINES_IN_DATASTREAM
-
 ; the number of bytes required for all data stream collectively
 _DATASTREAMS_SIZE = _NUM_DATASTREAMS * _SCANLINES_IN_DATASTREAM
 
+; the first data stream begins here. all datastreams are adjacent in memory
+	align 4
+_DATASTREAMS_ORIGIN ds _DATASTREAMS_SIZE
+
 ; the extent of memory used collectively by all data streams
-_DATASTREAMS_MEMTOP = _DATASTREAMS_ORIGIN + (_NUM_DATASTREAMS * _SCANLINES_IN_DATASTREAM)
+_DATASTREAMS_MEMTOP = _DATASTREAMS_ORIGIN + _DATASTREAMS_SIZE

@@ -11,7 +11,7 @@ void welcome();
 // local functions
 void initialise();
 void setDataStreams();
-int addToInputString(int key);
+int updateInputString(int key);
 void printInputString();
 void printInputCursor();
 int updateScr(const char c, const int x, const int y);
@@ -104,7 +104,7 @@ const unsigned char glyphs[] = {
 	1,2,2,2,1, // open parenthesis
 	4,2,2,2,4, // close parenthesis
 	0,0,0,0,7, // underscore
-	7,7,7,7,7, // cursor block
+	0,0,0,0,7, // cursor 
 };
 
 // the location on the screen for the next output character
@@ -117,15 +117,15 @@ int outputY;
 // the -1 is for the prompt character
 #define MAX_INPUT_CHARS CHARS_PER_ROW-1
 
+// previous key to be pressed. we use this to prevent key repetition.
+int prevInputKey = -1;
+
 // the input string returned by gets(), which is called by stepAdvland()
 char input[MAX_INPUT_CHARS];
 
 // the index to be used next on key input. this is also the position of the
 // cursor for display purposes
 int inputIdx = 0;
-
-// previous key to be pressed. we use this to prevent key repetition.
-int prevInputKey = -1;
 
 // the last key pressed. distinct from prevInputKey. we use this to cycle
 // through available key options in the group.
@@ -134,6 +134,10 @@ int keyGroup = -1;
 // the next option in the keyGroup to use. -1 indicates that nothing has yet
 // been done with the current cursor position. 
 int keyGroupOpt = -1;
+
+// the number of times the VBLANK program has been executed. we'll use this to
+// create the flashing cursor.
+int runCountVBLANK = 0;
 
 int main() {
 	switch (RAM[_RUN_FUNC]) {
@@ -144,11 +148,13 @@ int main() {
 			break;
 		case _FN_GAME_VB:
 			{
+				runCountVBLANK++;
+
 				int commit = 0;
 				int key = RAM[_INPUT_KEY];
 
 				if (key != prevInputKey && key > 0) {
-					commit = addToInputString(key);
+					commit = updateInputString(key);
 					printInputString();
 				}
 				prevInputKey = key;
@@ -175,8 +181,13 @@ void initialise() {
     myMemsetInt(RAM_INT, 0, 4096/4);
 
 	// set datastream increments to one
-    for(int i = 0; i <= 34; i++) {
+    for (int i = 0; i <= 34; i++) {
         setIncrement(i, 1, 0);
+	}
+
+	// initialise input string to space
+	for (int i = 0; i < MAX_INPUT_CHARS; i ++) {
+		input[i] = ' ';
 	}
 
 	initAdvland();
@@ -190,11 +201,12 @@ void setDataStreams() {
 	}
 }
 
-int addToInputString(int key) {
+// returns 1 if input is to be committed
+int updateInputString(int key) {
 	// hash key. commit input
 	if (key == 12) {
 		keyGroup = -1;
-		keyGroupOpt = 0;
+		keyGroupOpt = -1;
 		return 1;
 	}
 
@@ -204,6 +216,7 @@ int addToInputString(int key) {
 		keyGroupOpt = -1;
 		if (inputIdx > 0) {
 			inputIdx --;
+			input[inputIdx] = ' ';
 		}
 		return 0;
 	}
@@ -213,15 +226,16 @@ int addToInputString(int key) {
 		return 0;
 	}
 
-	// if key is one then commit last key group
+	// commit last key group
 	if (key == 1) {
-		keyGroup = key;
+		keyGroup = -1;
 		keyGroupOpt = -1;
 		return 0;
 	}
 	
 	// update key group
 	if (key != keyGroup) {
+		// start new opt sequence
 		keyGroupOpt = 0;
 	} else if (inputIdx > 0) {
 		// if this key is in the same key group as previous key then overwrite
@@ -355,18 +369,22 @@ int addToInputString(int key) {
 		// case 10 has been handled (backspace)
 		
 		case 11:
+			keyGroup = -1;
+			keyGroupOpt = -1;
+
 			// don't allow space as the first character in the input
 			if (inputIdx == 0) {
 				return 0;
 			}
 
 			input[inputIdx] = ' ';
-			numOpts = 0;
-			break;
+			inputIdx++;
+			return 0;
 
 		// case 12 has been handled (return/commit)
 	}
 
+	// prepare next key option
 	keyGroupOpt++;
 	if (keyGroupOpt > numOpts) {
 		keyGroupOpt = 0;
@@ -390,7 +408,18 @@ void printInputString() {
 }
 
 void printInputCursor() {
-	updateScr(0xff, inputIdx, outputY+1);
+	int cursor = inputIdx;
+
+	// highlight character being edited  
+	if (cursor > 0 && keyGroupOpt != -1) {
+		cursor--;
+	}
+
+	if ((runCountVBLANK & 0x08) == 0x08) {
+		updateScr(0xff, cursor, outputY+1);
+	} else {
+		updateScr(input[cursor], cursor, outputY+1);
+	}
 }
 
 // add a character to the screen buffer at the character x/y position
