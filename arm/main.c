@@ -17,6 +17,7 @@ void printInputCursor();
 int updateScr(const char c, const int x, const int y);
 int printChar(const char c);
 void nextOutputLine();
+void scrollscr();
 
 // number of scanlines in a glyph
 #define LINE_HEIGHT  5
@@ -31,7 +32,7 @@ void nextOutputLine();
 #define CHARS_PER_ROW _NUM_DATASTREAMS * GLYPHS_PER_COLUMN
 
 // height of screen in characters
-#define CHARS_PER_COL _SCANLINES_IN_DATASTREAM / (LINE_HEIGHT + LINE_SPACING)
+#define CHARS_PER_DATASTREAM _SCANLINES_IN_DATASTREAM / (LINE_HEIGHT + LINE_SPACING)
 
 // the amount to adjust the ASCII value by to correctly index the
 // glyphs array
@@ -107,7 +108,7 @@ const unsigned char glyphs[] = {
 	0,0,0,0,7, // cursor 
 };
 
-// the location on the screen for the next output character
+// the location on the screen (in characters) for the next output character
 int outputX; 
 int outputY;
 
@@ -605,9 +606,11 @@ void _printf(const char * s, ...) {
 }
 
 void clrscr() {
-	for (int i = _DATASTREAMS_ORIGIN; i < _DATASTREAMS_MEMTOP; i++) {
-		RAM[i] = 0;
-	}
+	// clear integers (32bit) instead of chars (8bit) for performance reasons.
+	// size of memset therefore is a quarter of the datastreams size
+	#define CLEAR_DATASTREAM _DATASTREAMS_SIZE / 4
+
+	myMemsetInt((unsigned int *)RAM+_DATASTREAMS_ORIGIN-4, 0x00, CLEAR_DATASTREAM);
 	outputY = 0;
 	outputX = 0;
 }
@@ -649,9 +652,46 @@ unsigned int _rand() {
 }
 
 void nextOutputLine() {
+	// no blank line if output cursor is at the beginning of the screen
+	if (outputY == 0 && outputX == 0) {
+		return;
+	}
+
 	outputY++;
 	outputX = 0;
-	if (outputY >= CHARS_PER_COL-1) {
-		clrscr();
+	if (outputY >= CHARS_PER_DATASTREAM-1) {
+		scrollscr();
 	}
+}
+
+void scrollscr() {
+	// scrolling so a quarter of the existing screen is visible. this is a good
+	// value because we know that the size of the datastreams is a multiple of
+	// four, so the division comes out even
+	#define SCROLL_PRESERVE _SCANLINES_IN_DATASTREAM / 4
+
+	// the copy distance within the datastream
+	#define SCROLL_COPY_OFFSET _SCANLINES_IN_DATASTREAM - SCROLL_PRESERVE
+
+	// we need to adjust outputY which is measure in characters rather than
+	// scanlines
+	#define SCROLL_CHARS CHARS_PER_DATASTREAM / 4
+
+	// the layout of datastreams isn't ideal for scrolling so we must treat
+	// each datastream separately
+	for (int i = 0; i < _NUM_DATASTREAMS; i++) {
+		int idx = _DATASTREAMS_ORIGIN + (i * _SCANLINES_IN_DATASTREAM);
+
+		// copy bottom of datastream to top of datastream
+		for (int j = 0; j < SCROLL_PRESERVE; j++) {
+			RAM[idx+j] = RAM[idx+j+SCROLL_COPY_OFFSET];
+		}
+
+		// clear remainder of the datastream
+		for (int j = SCROLL_PRESERVE; j < _SCANLINES_IN_DATASTREAM; j++) {
+			RAM[idx+j] = 0x00;
+		}
+	}
+
+	outputY = SCROLL_CHARS;
 }
