@@ -371,6 +371,8 @@ int updateScr(const char c, const int x, const int y) {
 		return 0;
 	}
 
+	// default to symbolsGlyphs. this will be changed appropriately depending
+	// on the character to be output
 	const unsigned char *glyphs = symbolsGlyphs;
 
 	if (c == ' ') {
