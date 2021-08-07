@@ -367,7 +367,7 @@ void action(int ac, int *ip)
   {
     j = 0;
     for (i=1;i<IL;i++) if (IA[i] == TR) if (IAS[i][0] == '*') j++;
-    _printf("I've stored %u treasures.  On a scale\nof 0 to 100, that rates a %u.\n",j,j*divu(100,TT));
+    _printf("I've stored %u treasures.  On a scale of 0 to 100, that rates a %u.\n",j,j*divu(100,TT));
     if (j == TT)
     {
       _printf("Well done.\nThe game is now over.\nAnother game? ");

@@ -10,3 +10,9 @@ main() removed and replaced with initAdvland() and stepAdvland()
 
 prompt removed from beginning of get_input() function and replaced with a
 prompt() function that is called at the end of initAdvland() and stepAdvland()
+
+strings changed so that they display nicer
+	- words/phrases emphasised with hyphens are now quoted (with quotation
+	  marks). signs, NPC speech, etc.
+	- inline instructions indicating a command are quoted with quotation marks
+	  rather than apostrophe
