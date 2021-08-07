@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <defines_cdfj.h>
 #include <advland_helpers.h>
+#include "glyphs.h"
 #include "shared_defines.h"
 
 // adventureland functions
@@ -33,80 +34,6 @@ void scrollscr();
 
 // height of screen in characters
 #define CHARS_PER_DATASTREAM _SCANLINES_IN_DATASTREAM / (LINE_HEIGHT + LINE_SPACING)
-
-// the amount to adjust the ASCII value by to correctly index the
-// glyphs array
-const int upperCaseAdj = 65;
-const int lowerCaseAdj = 97;
-const int numberAdj = 22;
-
-// some ASCII characters need to be converted to specific glyphs. we're not
-// grouping these in the same order as the ASCII table although arguably that
-// would make for easier conversion - requiring the code to explicitly map the
-// ASCII to the glyph makes for clearer code IMO
-const int spaceGlyph = 36;
-const int dotGlyph = 37;
-const int commaGlyph = 38;
-const int apostropheGlyph = 39;
-const int ampersandGlyph = 40;
-const int hyphenGlyph = 41;
-const int asteriskGlyph = 42;
-const int questionMarkGlyph = 43;
-const int openParenGlyph = 44;
-const int closeParenGlyph = 45;
-const int underscoreGlyph = 46;
-const int cursorGlyph = 47;
-
-const unsigned char glyphs[] = {
-	2,5,7,5,5, // A
-	6,5,6,5,6, 
-	3,4,4,4,3,
-	6,5,5,5,6,
-	7,4,6,4,7,
-	7,4,6,4,4,
-	3,4,4,5,7,
-	5,5,7,5,5,
-	7,2,2,2,7,
-	1,1,1,5,7,
-	5,5,6,5,5,
-	4,4,4,4,7, // L
-	5,7,5,5,5,
-	6,5,5,5,5,
-	2,5,5,5,2,
-	7,5,6,4,4,
-	2,5,5,7,3,
-	6,5,6,5,5,
-	7,4,7,1,7,
-	7,2,2,2,2,
-	5,5,5,5,7,
-	5,5,5,5,2,
-	5,5,5,7,5, 
-	5,2,2,2,5,
-	5,5,7,2,2,
-	7,0,2,4,7,
-	7,5,5,5,7, // digits (0 to 9)
-	2,6,2,2,7,
-	7,1,7,4,7,
-	7,1,3,1,7,
-	5,5,7,1,1,
-	7,4,6,1,6,
-	4,4,7,5,7,
-	7,1,1,1,1,
-	7,5,7,5,7,
-	7,5,7,1,1,
-	0,0,0,0,0, // space
-	0,0,0,2,2, // dot
-	0,0,0,2,4, // comma
-	2,4,0,0,0, // apostrophe
-	0,2,7,2,0, // ampersand
-	0,0,7,0,0, // hyphen
-	0,2,5,2,0, // asterisk
-	7,1,2,0,2, // question mark
-	1,2,2,2,1, // open parenthesis
-	4,2,2,2,4, // close parenthesis
-	0,0,0,0,7, // underscore
-	0,0,0,0,7, // cursor 
-};
 
 // the location on the screen (in characters) for the next output character
 int outputX; 
@@ -444,13 +371,18 @@ int updateScr(const char c, const int x, const int y) {
 		return 0;
 	}
 
+	const unsigned char *glyphs = symbolsGlyphs;
+
 	if (c == ' ') {
 		g = spaceGlyph;
 	} else if (c >= '0' && c <= '9') {
+		glyphs = digitsGlyphs;
 		g = c-numberAdj;
 	} else if (c >= 'A' && c <= 'Z') {
+		glyphs = upperCaseGlyphs;
 		g = c-upperCaseAdj;
 	} else if (c >= 'a' && c <= 'z') {
+		glyphs = upperCaseGlyphs;
 		g = c-lowerCaseAdj;
 	} else if (c == '.') {
 		g = dotGlyph;
