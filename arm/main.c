@@ -16,7 +16,8 @@ int updateInputString(int key);
 void printInputString();
 void printInputCursor();
 int updateScr(const char c, const int x, const int y);
-int printChar(const char c);
+void printOutputChar(const char c);
+void flushWordBuffer();
 void nextOutputLine();
 void scrollscr();
 
@@ -68,6 +69,11 @@ int keyGroupOpt = -1;
 // create the flashing cursor.
 int runCountVBLANK = 0;
 
+// the maximum number of characters to buffer before flushing to screen. is
+// flushed at whitespace or when the buffer size is reached.
+char wordBuffer[CHARS_PER_ROW];
+int wordBufferIdx = 0;
+
 int main() {
 	switch (RAM[_RUN_FUNC]) {
 		case _FN_INIT:
@@ -114,10 +120,17 @@ void initialise() {
         setIncrement(i, 1, 0);
 	}
 
-	// initialise input string to space
+	// initialise input string to spaces
 	for (int i = 0; i < MAX_INPUT_CHARS; i ++) {
 		input[i] = ' ';
 	}
+	inputIdx = 0;
+
+	// initialise output buffer string to spaces
+	for (int i = 0; i < CHARS_PER_ROW; i ++) {
+		wordBuffer[i] = ' ';
+	}
+	wordBufferIdx = 0;
 
 	initAdvland();
 }
@@ -434,37 +447,48 @@ int updateScr(const char c, const int x, const int y) {
 	return 1;
 }
 
-// printChar adds a character to the output stream using current outputX and
-// outputY values as arugments to updateScr().
+// printOutputChar adds a character to the output stream using current outputX
+// and outputY values as arugments to updateScr().
 //
 // advances outputX and outputY as appropriate (see nextOutputLine() function).
-//
-// returns 1 if character was printed and 0 if not. if return value is 1 then
-// outputX and outputY values will have changed.
-int printChar(const char c) {
-	int v = updateScr(c, outputX, outputY);
+void printOutputChar(const char c) {
+	wordBuffer[wordBufferIdx] = c;
+	wordBufferIdx++;
 
-	switch (v) {
-		case 0:
-			// no output
-			return 0;
+	// flush buffer on whitespace or when buffer is full
+	if (c == '\n' || c == ' ' || c == '\t' || wordBufferIdx >= CHARS_PER_ROW) {
+		flushWordBuffer();
+	}
+}
 
-		case 1:
-			// normal output
-			outputX++;
-			if (outputX >= CHARS_PER_ROW) {
-				nextOutputLine();
-			}
-			break;
-
-		case 2:
-			// newline character
-			nextOutputLine();
-			break;
+void flushWordBuffer() {
+	// if word cannot fit on the current line, insert a newline before
+	// continuing
+	if (outputX + wordBufferIdx >= CHARS_PER_ROW) {
+		nextOutputLine();
 	}
 
-	return 1;
+	for (int i = 0; i < wordBufferIdx; i++) {
+		int v = updateScr(wordBuffer[i], outputX, outputY);
+		switch (v) {
+			case 1:
+				// normal output
+				outputX++;
+				if (outputX >= CHARS_PER_ROW) {
+					nextOutputLine();
+				}
+				break;
+
+			case 2:
+				// newline character
+				nextOutputLine();
+				break;
+		}
+	}
+
+	wordBufferIdx = 0;
 }
+
 
 // _printf should only be used for output from the engine
 void _printf(const char * s, ...) {
@@ -494,25 +518,25 @@ void _printf(const char * s, ...) {
 			} else if (*s == 's' || *s == 'S') {
 				if (fieldWidth == -1) {
 					for (char *p = va_arg(ap, char *); *p; p++) {
-						printChar(*p);
+						printOutputChar(*p);
 					}
 				} else {
 					int i;
 					char *p;
 					for (i = 0, p = va_arg(ap, char *); i < fieldWidth && *p; i++, p++) {
-						printChar(*p);
+						printOutputChar(*p);
 					}
 				}
 			} else if (*s == 'c' || *s == 'C') {
 				// chars are promoted to int when passed in a vararg
-				printChar((char)va_arg(ap, int));
+				printOutputChar((char)va_arg(ap, int));
 			} else if (*s == 'd' || *s == 'D' || *s == 'u' || *s == 'U') {
 				int d;
 				d = va_arg(ap, int);
 				if (d >= 0 && d <= 9) {
-					printChar(d + 48);
+					printOutputChar(d + 48);
 				} else {
-					printChar('&');
+					printOutputChar('&');
 				}
 			} else if (*s == '.') {
 				// field width modifier
@@ -527,12 +551,12 @@ void _printf(const char * s, ...) {
 					placeholderForce = 1;
 				}
 			} else {
-				printChar('&');
+				printOutputChar('&');
 			}
 		} else {
 			// prevent double-spaces
 			if (!(*s == ' ' && prevOutputChar == ' ' && outputX > 0)) {
-				printChar(*s);
+				printOutputChar(*s);
 			}
 			prevOutputChar = *s;
 		}
