@@ -37,24 +37,47 @@ _THREE_COUNT_STATE ds 1
 
 
 ; ----------------------------------
-; SCREEN TOPOLOGY
+; SCREEN TIMINGS
 
 ; atari safe timings: values assume that TIM64T timer is started immediately
 ; before the first WSYNC that leads into the screen region.
 
 VBLANKTIMER = 48 ; starts main screen at scanline 40
-OVERSCANTIMER = 31 
+OVERSCANTIMER = 36 
 
 ; the scanlines in the visible part of the screen are counted manually. ideally
 ; this would be 192 but the keypad reading code is CPU expensive and it will
-; overrun the overscan timer. 184 is the highest value that is a multiple 4 and
-; that keeps the kernel within NTSC spec.
-VISIBLE_SCANLINES = 184
+; overrun the overscan timer. 188 is the highest value that is a multiple of 4 and
+; that keeps the kernel within NTSC spec (see comment below)
+VISIBLE_SCANLINES = 188
 
 ; check that VISIBLE_SCANLINES value is a multiple of four. issue warning if is not
 #if VISIBLE_SCANLINES % 4 != 0
 	echo "VISIBLE_SCANLINES shoule be a multiple of 4"
 #endif
+
+; there must be a 400us delay before reading the INPTx registers after
+; writing to SWCHA. for a CPU running at 1.19Mhz a cycle takes 0.8403us.
+; 400us therefore will require 476.02 cycles
+;
+; DEY takes two cycles and a successful BNE takes three cycles. LDY also
+; takes two cycles and the final (unsuccessful) BNE takes two cycles; so
+; using a value of 472, we need to loop "waitKeypad" 95 times.
+KEYPAD_DELAY = 95
+
+; there is a balance between VISIBLE_SCANLINES, OVERSCANTIMER and the delay
+; between writing to SWCHA and reading INPTx registers when scanning the
+; keypad.
+;
+; for a "delay" of $5f (the number of loop iterations) there can be no more
+; than 188 VISIBLE_SCANLINES giving us a value of 36 for the OVERSCANTIMER.
+;
+; for a "delay" of $78 which some example code uses, the number of
+; VISIBLE_SCANLINES is 182 and an OVERSCAN_TIMER of 31.
+;
+; if my calculated delay value of $5f is wrong (ie doesn't work on real
+; hardware) then the alternative values can be used.
+
 
 
 ; ----------------------------------
@@ -361,7 +384,7 @@ screenA
 
 	; scanline check for end of visible screen
 	dec SCANLINE
-	beq endScreen
+	beq overscan
 	jmp screenA
 
 screenB
@@ -390,7 +413,7 @@ screenB
 
 	; scanline check for end of visible screen
 	dec SCANLINE
-	beq endScreen
+	beq overscan
 	jmp screenB
 
 screenC
@@ -425,14 +448,14 @@ screenC
 
 	; scanline check for end of visible screen
 	dec SCANLINE
-	beq endScreen
+	beq overscan
 	jmp screenC
 
 
 ; ----------------------------------
 ; OVERSCAN - KEYPAD DETECTION
 
-endScreen
+overscan
 	ldx #$2 ; prep for VBLANK on
 	sta WSYNC
 	stx VBLANK
@@ -440,7 +463,6 @@ endScreen
 	sty TIM64T
 	sta WSYNC
 
-overscan
 	; read keypad
     lda    #$ff
     ldx    #$0c
@@ -448,7 +470,8 @@ overscan
 newKeypadRow
     ror
     sta    SWCHA
-    ldy    #$78
+
+    ldy    #KEYPAD_DELAY
 waitKeypad
     dey
     bne    waitKeypad
