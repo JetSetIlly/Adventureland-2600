@@ -118,7 +118,8 @@ int outputY;
 // the -1 is for the prompt character
 #define MAX_INPUT_CHARS CHARS_PER_ROW-1
 
-// previous key to be pressed. we use this to prevent key repetition.
+// previous key pressed and sent as an argument to the VBLANK program. we use
+// this to prevent key repetition.
 int prevInputKey = -1;
 
 // the input string returned by gets(), which is called by stepAdvland()
@@ -373,8 +374,9 @@ int updateInputString(int key) {
 			keyGroup = -1;
 			keyGroupOpt = -1;
 
-			// don't allow space as the first character in the input
-			if (inputIdx == 0) {
+			// don't allow space as the first character in the input and do not
+			// allow consecutive spaces
+			if (inputIdx == 0 || input[inputIdx-1] == ' ') {
 				return 0;
 			}
 
@@ -482,12 +484,12 @@ int updateScr(const char c, const int x, const int y) {
 		// bit pattern for this scanline of glyph
 		int b = glyphs[l+(g*LINE_HEIGHT)];
 
-		if ((x&0x01) == 0x00) {
+		if ((x&0x01) == 0x01) {
 			int addr = _DATASTREAMS_ORIGIN + ((x>>1)*_SCANLINES_IN_DATASTREAM);
 			RAM[addr + sl] &= 0xf0;
 			RAM[addr + sl] |= b << 1; 
 		} else {
-			int addr = _DATASTREAMS_ORIGIN + (((x>>1)+1)*_SCANLINES_IN_DATASTREAM);
+			int addr = _DATASTREAMS_ORIGIN + (((x>>1))*_SCANLINES_IN_DATASTREAM);
 			RAM[addr + sl] &= 0x0f;
 			RAM[addr + sl] |= b << 5; 
 		}
@@ -530,6 +532,7 @@ int printChar(const char c) {
 	return 1;
 }
 
+// _printf should only be used for output from the engine
 void _printf(const char * s, ...) {
 	va_list ap;
 	va_start(ap, s);
@@ -538,6 +541,9 @@ void _printf(const char * s, ...) {
 	int placeholderForce = 0;
 	int fieldWidth = -1;
 	int skipFieldWidthReset = 0;
+
+	// the previous character to be output. we use this to prevent double-spaces.
+	char prevOutputChar = '\0';
 
 	while (*s != '\0') {
 		if (placeholderForce == 1 || *s == '%') {
@@ -590,7 +596,11 @@ void _printf(const char * s, ...) {
 				printChar('&');
 			}
 		} else {
-			printChar(*s);
+			// prevent double-spaces
+			if (!(*s == ' ' && prevOutputChar == ' ' && outputX > 0)) {
+				printChar(*s);
+			}
+			prevOutputChar = *s;
 		}
 
 		s++;
