@@ -16,7 +16,7 @@ int updateInputString(int key);
 void printInputString();
 void printInputCursor();
 int updateScr(const char c, const int x, const int y);
-void printOutputChar(const char c);
+void updateWordBuffer(const char c);
 void flushWordBuffer();
 void nextOutputLine();
 void scrollscr();
@@ -74,12 +74,16 @@ int runCountVBLANK = 0;
 char wordBuffer[CHARS_PER_ROW];
 int wordBufferIdx = 0;
 
+// the previous character to be output. we use this to prevent double-spaces.
+char prevOutputChar = '\0';
+
+
 int main() {
 	switch (RAM[_RUN_FUNC]) {
 		case _FN_INIT:
 			initialise();
 			setDataStreams();
-			nextOutputLine();
+			printInputCursor();
 			break;
 		case _FN_GAME_VB:
 			{
@@ -103,8 +107,8 @@ int main() {
 					stepAdvland();
 					nextOutputLine();
 				}
-				setDataStreams();
 
+				setDataStreams();
 				printInputCursor();
 			}
 			break;
@@ -133,6 +137,7 @@ void initialise() {
 	wordBufferIdx = 0;
 
 	initAdvland();
+	nextOutputLine();
 }
 
 void setDataStreams() {
@@ -419,6 +424,8 @@ int updateScr(const char c, const int x, const int y) {
 		g = closeParenGlyph;
 	} else if (c == '_') {
 		g = underscoreGlyph;
+	} else if (c == '"') {
+		g = quoteGlyph;
 	} else if (c == 0xff) {
 		g = cursorGlyph;
 	} else if (c == '\0') {
@@ -447,11 +454,18 @@ int updateScr(const char c, const int x, const int y) {
 	return 1;
 }
 
-// printOutputChar adds a character to the output stream using current outputX
+// updateWordBuffer adds a character to the output stream using current outputX
 // and outputY values as arugments to updateScr().
 //
 // advances outputX and outputY as appropriate (see nextOutputLine() function).
-void printOutputChar(const char c) {
+void updateWordBuffer(const char c) {
+	// prevent double-spaces
+	if (c == ' ' && prevOutputChar == ' ' && outputX > 0) {
+		return;
+	}
+
+	prevOutputChar = c;
+
 	wordBuffer[wordBufferIdx] = c;
 	wordBufferIdx++;
 
@@ -500,9 +514,6 @@ void _printf(const char * s, ...) {
 	int fieldWidth = -1;
 	int skipFieldWidthReset = 0;
 
-	// the previous character to be output. we use this to prevent double-spaces.
-	char prevOutputChar = '\0';
-
 	while (*s != '\0') {
 		if (placeholderForce == 1 || *s == '%') {
 			// reset placeholderForce flag or advance pointer. the pointer
@@ -518,25 +529,25 @@ void _printf(const char * s, ...) {
 			} else if (*s == 's' || *s == 'S') {
 				if (fieldWidth == -1) {
 					for (char *p = va_arg(ap, char *); *p; p++) {
-						printOutputChar(*p);
+						updateWordBuffer(*p);
 					}
 				} else {
 					int i;
 					char *p;
 					for (i = 0, p = va_arg(ap, char *); i < fieldWidth && *p; i++, p++) {
-						printOutputChar(*p);
+						updateWordBuffer(*p);
 					}
 				}
 			} else if (*s == 'c' || *s == 'C') {
 				// chars are promoted to int when passed in a vararg
-				printOutputChar((char)va_arg(ap, int));
+				updateWordBuffer((char)va_arg(ap, int));
 			} else if (*s == 'd' || *s == 'D' || *s == 'u' || *s == 'U') {
 				int d;
 				d = va_arg(ap, int);
 				if (d >= 0 && d <= 9) {
-					printOutputChar(d + 48);
+					updateWordBuffer(d + 48);
 				} else {
-					printOutputChar('&');
+					updateWordBuffer('&');
 				}
 			} else if (*s == '.') {
 				// field width modifier
@@ -551,14 +562,10 @@ void _printf(const char * s, ...) {
 					placeholderForce = 1;
 				}
 			} else {
-				printOutputChar('&');
+				updateWordBuffer('&');
 			}
 		} else {
-			// prevent double-spaces
-			if (!(*s == ' ' && prevOutputChar == ' ' && outputX > 0)) {
-				printOutputChar(*s);
-			}
-			prevOutputChar = *s;
+			updateWordBuffer(*s);
 		}
 
 		s++;
@@ -569,6 +576,8 @@ void _printf(const char * s, ...) {
 			skipFieldWidthReset = 0;
 		}
 	}
+
+	prevOutputChar = '\0';
 
 	va_end(ap);
 }

@@ -2,7 +2,7 @@
 // glyphs array
 const int upperCaseAdj = 65;
 const int lowerCaseAdj = 97;
-const int numberAdj = 22;
+const int numberAdj = 48;
 
 // some ASCII characters need to be converted to specific glyphs. we're not
 // grouping these in the same order as the ASCII table although arguably that
@@ -19,7 +19,8 @@ const int questionMarkGlyph = 7;
 const int openParenGlyph = 8;
 const int closeParenGlyph = 9;
 const int underscoreGlyph = 10;
-const int cursorGlyph = 11;
+const int quoteGlyph = 11;
+const int cursorGlyph = 12;
 
 const unsigned char upperCaseGlyphs[] = {
 	2,5,7,5,5, // A
@@ -104,6 +105,7 @@ const unsigned char symbolsGlyphs[] = {
 	1,2,2,2,1, // open parenthesis
 	4,2,2,2,4, // close parenthesis
 	0,0,0,0,7, // underscore
+	2,2,0,0,0, // quote
 	0,0,0,0,7, // cursor 
 };
 
