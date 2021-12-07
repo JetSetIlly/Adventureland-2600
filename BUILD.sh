@@ -30,10 +30,17 @@ function compileArm {
 	fi
 
 	# create assembly output
-	$CC $CFLAGS -c -g -Wa,-a,-ad arm/main.c -o arm/main.o > arm/main.S
+	$CC $CFLAGS -c -g -Wa,-a,-ad arm/main.c -o arm/main.o > arm/main.lst
 	if [ $? -ne 0 ]
 	then
-		echo "compilation of arm/main.c failed"
+		echo "generation of arm/main.c to .lst file"
+		exit 10
+	fi
+
+	$CC $CFLAGS -c -g -Wa,-a,-ad arm/advland/advland.c -o arm/advland/advland.o > arm/advland/advland.lst 2> /dev/null
+	if [ $? -ne 0 ]
+	then
+		echo "generation of arm/advland/advland.c to .lst file"
 		exit 10
 	fi
 
@@ -47,7 +54,7 @@ function compileArm {
 	$CC $CFLAGS_NOWARN -c arm/advland/advland.c -o arm/advland/advland.o 
 	if [ $? -ne 0 ]
 	then
-		echo "compilation of arm/main.c failed"
+		echo "compilation of arm/advland/advland.c failed"
 		exit 10
 	fi
 
