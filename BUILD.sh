@@ -9,13 +9,15 @@ DASM=dasm
 
 CC="$TOOLCHAIN"-gcc
 OBJCOPY="$TOOLCHAIN"-objcopy
+OBJDUMP="$TOOLCHAIN"-objdump
 SIZE="$TOOLCHAIN"-size
 
-CFLAGS_NOWARN="-I arm/includes -mcpu=arm7tdmi -march=armv4t -mthumb -ffunction-sections -O2 -Wl,--build-id=none"
+CFLAGS_NOWARN="-I arm/includes -gstabs -mcpu=arm7tdmi -march=armv4t -mthumb -ffunction-sections -O2 -Wl,--build-id=none"
 CFLAGS="$CFLAGS_NOWARN -Wall"
 
 function clean {
 	rm arm/main.o arm/main.elf arm/main.bin arm/custom/custom.o 2> /dev/null
+	rm arm/main.map arm/main.obj
 	rm arm/shared_defines.h 2> /dev/null
 	rm 6507/cart.lst 2> /dev/null
 	rm "$PROJECTNAME.bin" "$PROJECTNAME.sym" 2> /dev/null
@@ -62,6 +64,13 @@ function compileArm {
 	if [ $? -ne 0 ]
 	then
 		echo "building of main elf file failed"
+		exit 10
+	fi
+
+	$OBJDUMP -Sdrl arm/main.elf > arm/main.obj
+	if [ $? -ne 0 ]
+	then
+		echo "creation of arm binary file failed"
 		exit 10
 	fi
 
