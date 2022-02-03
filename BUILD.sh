@@ -12,7 +12,7 @@ OBJCOPY="$TOOLCHAIN"-objcopy
 OBJDUMP="$TOOLCHAIN"-objdump
 SIZE="$TOOLCHAIN"-size
 
-CFLAGS_NOWARN="-I arm/includes -gstabs -mcpu=arm7tdmi -march=armv4t -mthumb -ffunction-sections -O2 -Wl,--build-id=none"
+CFLAGS_NOWARN="-I arm/includes -g -mcpu=arm7tdmi -march=armv4t -mthumb -ffunction-sections -O2 -Wl,--build-id=none"
 CFLAGS="$CFLAGS_NOWARN -Wall"
 
 function clean {
