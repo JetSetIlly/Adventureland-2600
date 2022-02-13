@@ -9,17 +9,26 @@ DASM=dasm
 
 CC="$TOOLCHAIN"-gcc
 OBJCOPY="$TOOLCHAIN"-objcopy
-OBJDUMP="$TOOLCHAIN"-objdump
 SIZE="$TOOLCHAIN"-size
 
-CFLAGS_NOWARN="-I arm/includes -g -mcpu=arm7tdmi -march=armv4t -mthumb -ffunction-sections -O2 -Wl,--build-id=none"
-CFLAGS="$CFLAGS_NOWARN -Wall"
+OPTIMISATION="-Os"
+CFLAGS_NOWARN="-I arm/includes -g -mcpu=arm7tdmi -march=armv4t -mthumb -ffunction-sections -Wl,--build-id=none"
+CFLAGS_NOWARN="$CFLAGS_NOWARN $OPTIMISATION"
+CFLAGS="$CFLAGS_NOWARN -Wall -Wno-missing-prototypes"
+
+ELF="arm/main.elf"
+BIN="arm/main.bin"
+OBJS="arm/custom/custom.o arm/main.o arm/advland/advland.o"
+MAP="arm/main.map"
+SHARED_DEFINES="arm/shared_defines.h"
 
 function clean {
-	rm arm/main.o arm/main.elf arm/main.bin arm/custom/custom.o 2> /dev/null
-	rm arm/main.map arm/main.obj
-	rm arm/shared_defines.h 2> /dev/null
-	rm 6507/cart.lst 2> /dev/null
+	rm $ELF 2> /dev/null
+	rm $BIN 2> /dev/null
+	rm $OBJS 2> /dev/null
+	rm $MAP 2> /dev/null
+	rm $SHARED_DEFINES 2> /dev/null
+	rm 6507/*.lst 2> /dev/null
 	rm "$PROJECTNAME.bin" "$PROJECTNAME.sym" 2> /dev/null
 }
 
@@ -28,21 +37,6 @@ function compileArm {
 	if [ $? -ne 0 ]
 	then
 		echo "compilation of custom.S failed"
-		exit 10
-	fi
-
-	# create assembly output
-	$CC $CFLAGS -c -g -Wa,-a,-ad arm/main.c -o arm/main.o > arm/main.lst
-	if [ $? -ne 0 ]
-	then
-		echo "generation of arm/main.c to .lst file"
-		exit 10
-	fi
-
-	$CC $CFLAGS -c -g -Wa,-a,-ad arm/advland/advland.c -o arm/advland/advland.o > arm/advland/advland.lst 2> /dev/null
-	if [ $? -ne 0 ]
-	then
-		echo "generation of arm/advland/advland.c to .lst file"
 		exit 10
 	fi
 
@@ -60,21 +54,14 @@ function compileArm {
 		exit 10
 	fi
 
-	$CC $CFLAGS -o arm/main.elf arm/custom/custom.o arm/main.o arm/advland/advland.o -T arm/custom/custom.boot.lds -nostartfiles -Wl,-Map=arm/main.map,--gc-sections 
+	$CC $CFLAGS -o "$ELF" $OBJS -T arm/custom/custom.boot.lds -nostartfiles -Wl,-Map=arm/main.map,--gc-sections 
 	if [ $? -ne 0 ]
 	then
 		echo "building of main elf file failed"
 		exit 10
 	fi
 
-	$OBJDUMP -Sdrl arm/main.elf > arm/main.obj
-	if [ $? -ne 0 ]
-	then
-		echo "creation of arm binary file failed"
-		exit 10
-	fi
-
-	$OBJCOPY -O binary -S arm/main.elf arm/main.bin 
+	$OBJCOPY -O binary -S "$ELF" "$BIN"
 	if [ $? -ne 0 ]
 	then
 		echo "creation of arm binary file failed"
@@ -103,6 +90,6 @@ compileArm
 assemble6507
 
 # summary of compilation
-$SIZE arm/custom/custom.o arm/main.o arm/main.elf
+$SIZE $OBJS $ELF
 ls -l "$PROJECTNAME.bin"
 

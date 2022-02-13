@@ -28,6 +28,8 @@ unsigned int* const _QPTR=(unsigned int*)0x40000098;
 unsigned int* const _QINC=(unsigned int*)0x40000124;
 unsigned int* const _WAVEFORM=(unsigned int*)0x400001B0;
 
+void setPointer(int fetcher, unsigned int offset);
+
 // Set fetcher pointer (offset from start of display data)
 inline void setPointer(int fetcher, unsigned int offset) {
   _QPTR[fetcher] = offset << 20;
