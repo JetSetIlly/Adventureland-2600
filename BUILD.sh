@@ -12,7 +12,7 @@ OBJCOPY="$TOOLCHAIN"-objcopy
 SIZE="$TOOLCHAIN"-size
 
 OPTIMISATION="-Os"
-CFLAGS_NOWARN="-I arm/includes -g -mcpu=arm7tdmi -march=armv4t -mthumb -ffunction-sections -Wl,--build-id=none"
+CFLAGS_NOWARN="-I arm/includes -g3 -gdwarf-4 -gstrict-dwarf -mcpu=arm7tdmi -march=armv4t -mthumb -ffunction-sections -Wl,--build-id=none"
 CFLAGS_NOWARN="$CFLAGS_NOWARN $OPTIMISATION"
 CFLAGS="$CFLAGS_NOWARN -Wall -Wno-missing-prototypes"
 
