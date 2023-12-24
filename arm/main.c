@@ -30,29 +30,6 @@
 #include "glyphs.h"
 #include "shared_defines.h"
 
-// adventureland functions
-void initAdvland();
-void stepAdvland();
-void welcome();
-
-// local functions
-void initialise();
-void setDataStreams();
-int updateInputString(int key);
-void printInputString();
-void printInputCursor();
-int updateScr(const char c, const int x, const int y);
-void updateWordBuffer(const char c);
-void flushWordBuffer();
-void nextOutputLine();
-void scrollscr();
-
-// number of scanlines in a glyph
-#define LINE_HEIGHT  5
-
-// the number of scanlines between character rows
-#define LINE_SPACING  1
-
 // how many glyphs can we pack into a data stream
 #define GLYPHS_PER_COLUMN 2
 
@@ -63,8 +40,12 @@ void scrollscr();
 #define CHARS_PER_DATASTREAM _SCANLINES_IN_DATASTREAM / (LINE_HEIGHT + LINE_SPACING)
 
 // the location on the screen (in characters) for the next output character
-int outputX; 
-int outputY;
+int drawX = 0; 
+int drawY = 0;
+
+// the data used to update the screen
+unsigned char drawColumn[LINE_HEIGHT];
+int drawPos = 0;
 
 // maximum number of characters in the input string. note that this has to be
 // CHARS_PER_ROW (or less) in order for text rendering to work as intended
@@ -100,8 +81,29 @@ int runCountVBLANK = 0;
 char wordBuffer[CHARS_PER_ROW];
 int wordBufferIdx = 0;
 
+// the number of characters in the line thus far. not the same as drawX
+int lineX = 0;
+
 // the previous character to be output. we use this to prevent double-spaces.
 char prevOutputChar = '\0';
+
+// adventureland functions
+void initAdvland();
+void stepAdvland();
+void welcome();
+
+// local functions
+void initialise();
+void setDataStreams();
+int updateInputString(int key);
+void printInputString();
+void printInputCursor();
+void draw(unsigned char c[LINE_HEIGHT], const int x, const int y);
+void drawText(char text[], int length);
+void flushWordBuffer();
+void updateWordBuffer(const char c);
+void nextOutputLine();
+void scrollscr();
 
 
 int main() {
@@ -125,13 +127,7 @@ int main() {
 				prevInputKey = key;
 
 				if (commit) {
-					// three newlines before continuing 
-					nextOutputLine();
-					nextOutputLine();
-					nextOutputLine();
-
 					stepAdvland();
-					nextOutputLine();
 				}
 
 				setDataStreams();
@@ -150,17 +146,18 @@ void initialise() {
         setIncrement(i, 1, 0);
 	}
 
-	// initialise input string to spaces
-	for (int i = 0; i < MAX_INPUT_CHARS; i ++) {
-		input[i] = ' ';
-	}
+	// set all global variables to inital values
+	drawX = 0; 
+	drawY = 0;
+	drawPos = 0;
+	prevInputKey = -1;
 	inputIdx = 0;
-
-	// initialise output buffer string to spaces
-	for (int i = 0; i < CHARS_PER_ROW; i ++) {
-		wordBuffer[i] = ' ';
-	}
+	keyGroup = -1;
+	keyGroupOpt = -1;
+	runCountVBLANK = 0;
 	wordBufferIdx = 0;
+	lineX = 0;
+	prevOutputChar = '\0';
 
 	initAdvland();
 	nextOutputLine();
@@ -370,165 +367,150 @@ int updateInputString(int key) {
 }
 
 void printInputString() {
-	// print current input string
-	for (int x = 0; x < inputIdx; x ++) {
-		updateScr(input[x], x, outputY+1);
-	}
-
-	// blank rest of line with space char
-	for (int x = inputIdx; x < CHARS_PER_ROW; x ++) {
-		updateScr(' ', x, outputY+1);
-	}
 }
 
 void printInputCursor() {
-	int cursor = inputIdx;
-
-	// highlight character being edited  
-	if (cursor > 0 && keyGroupOpt != -1) {
-		cursor--;
-	}
-
-	if ((runCountVBLANK & 0x08) == 0x08) {
-		updateScr(0xff, cursor, outputY+1);
-	} else {
-		updateScr(input[cursor], cursor, outputY+1);
-	}
 }
 
-// add a character to the screen buffer at the character x/y position
-//
-// returns:
-//	0 if character was not printed
-//	1 if it was
-//	2 for newline
-int updateScr(const char c, const int x, const int y) {
-	int g = spaceGlyph;
-
-	// convert char to glyph
-	if (c == '\n') {
-		return 2;
-	}
-
-	// don't print out of range
-	if (x >= CHARS_PER_ROW) {
-		return 0;
-	}
-
-	// default to symbolsGlyphs. this will be changed appropriately depending
-	// on the character to be output
-	const unsigned char *glyphs = symbolsGlyphs;
-
-	if (c == ' ') {
-		g = spaceGlyph;
-	} else if (c >= '0' && c <= '9') {
-		glyphs = digitsGlyphs;
-		g = c-numberAdj;
-	} else if (c >= 'A' && c <= 'Z') {
-		glyphs = upperCaseGlyphs;
-		g = c-upperCaseAdj;
-	} else if (c >= 'a' && c <= 'z') {
-		glyphs = upperCaseGlyphs;
-		g = c-lowerCaseAdj;
-	} else if (c == '.') {
-		g = dotGlyph;
-	} else if (c == ',') {
-		g = commaGlyph;
-	} else if (c == '\'') {
-		g = apostropheGlyph;
-	} else if (c == '&') {
-		g = ampersandGlyph;
-	} else if (c == '-') {
-		g = hyphenGlyph;
-	} else if (c == '*') {
-		g = asteriskGlyph;
-	} else if (c == '?') {
-		g = questionMarkGlyph;
-	} else if (c == '(' || c == '[' || c == '{') {
-		g = openParenGlyph;
-	} else if (c == ')' || c == ']' || c == '}') {
-		g = closeParenGlyph;
-	} else if (c == '_') {
-		g = underscoreGlyph;
-	} else if (c == '"') {
-		g = quoteGlyph;
-	} else if (c == 0xff) {
-		g = cursorGlyph;
-	} else if (c == '\0') {
-		return 0;
-	}
-
-	int sl = y * (LINE_HEIGHT+LINE_SPACING);
+void draw(unsigned char c[LINE_HEIGHT], const int x, const int y) {
+	int addr = _DATASTREAMS_ORIGIN + (x*_SCANLINES_IN_DATASTREAM);
+	int sl = LINE_SPACING_TOP + (y * (LINE_HEIGHT+LINE_SPACING_BOTTOM));
 
 	for (int l = 0; l < LINE_HEIGHT; l++) {
-		// bit pattern for this scanline of glyph
-		int b = glyphs[l+(g*LINE_HEIGHT)];
-
-		if ((x&0x01) == 0x01) {
-			int addr = _DATASTREAMS_ORIGIN + ((x>>1)*_SCANLINES_IN_DATASTREAM);
-			RAM[addr + sl] &= 0xf0;
-			RAM[addr + sl] |= b << 1; 
-		} else {
-			int addr = _DATASTREAMS_ORIGIN + (((x>>1))*_SCANLINES_IN_DATASTREAM);
-			RAM[addr + sl] &= 0x0f;
-			RAM[addr + sl] |= b << 5; 
-		}
-
+		RAM[addr + sl] = c[l];
 		sl++;
 	}
-
-	return 1;
 }
 
-// updateWordBuffer adds a character to the output stream using current outputX
-// and outputY values as arugments to updateScr().
-//
-// advances outputX and outputY as appropriate (see nextOutputLine() function).
-void updateWordBuffer(const char c) {
-	// prevent double-spaces
-	if (c == ' ' && prevOutputChar == ' ' && outputX > 0) {
-		return;
+void drawText(char text[], int length) {
+	char prev = '\0';
+
+	for (int i = 0; i < length; i++) {
+		unsigned char c = text[i];
+
+		if (c == '\n') {
+			draw(drawColumn, drawX, drawY);
+			nextOutputLine();
+			prev = c;
+			continue; // for loop
+		}
+
+		// the glyph to use by default
+		struct glyph g = symbolGlyphs[placeholderGlyph];
+
+		if (c >= '0' && c <= '9') {
+			g = digitsGlyphs[c-numberAdj];
+		} else if (c >= 'A' && c <= 'Z') {
+			g = upperCaseGlyphs[c-upperCaseAdj];
+		} else if (c >= 'a' && c <= 'z') {
+			g = upperCaseGlyphs[c-lowerCaseAdj];
+		} else if (c == ' ') {
+			g = symbolGlyphs[spaceGlyph];
+		} else if (c == '&') {
+			g = symbolGlyphs[ampersandGlyph];
+		} else if (c == '-') {
+			g = symbolGlyphs[hyphenGlyph];
+		} else if (c == '*') {
+			g = symbolGlyphs[asteriskGlyph];
+		} else if (c == '?') {
+			g = symbolGlyphs[questionMarkGlyph];
+		} else if (c == '(' || c == '[' || c == '{') {
+			g = symbolGlyphs[openParenGlyph];
+		} else if (c == ')' || c == ']' || c == '}') {
+			g = symbolGlyphs[closeParenGlyph];
+		} else if (c == '_') {
+			g = symbolGlyphs[underscoreGlyph];
+		} else if (c == '"') {
+			g = symbolGlyphs[quoteGlyph];
+		} else if (c == 0xff) {
+			g = symbolGlyphs[cursorGlyph];
+		} else if (c == '.') {
+			g = symbolGlyphs[fullStopGlyph];
+		} else if (c == ',') {
+			g = symbolGlyphs[commaGlyph];
+		} else if (c == '\'') {
+			g = symbolGlyphs[apostropheGlyph];
+		} else if (c == '\0') {
+			break; // for loop
+		} else {
+			prev = c;
+			continue; // for loop
+		}
+
+		int width = g.width;
+		for (int i = 0; i < numKernings; i++) {
+			struct kerning d = kernings[i];
+
+			if (d.previous == prev && d.current == c ) {
+				width -= d.adj;
+				break; // for loop
+			}
+		}
+
+		int shift = 8-drawPos-width;
+		for (int l = 0; l < LINE_HEIGHT; l++) {
+			// bit pattern for the glyph at the current scanline
+			int b = g.data[l];
+			if (shift >= 0) {
+				drawColumn[l] |= b << shift;
+			} else if (shift < 0) {
+				drawColumn[l] |= b >> -shift;
+			}
+		}
+
+		drawPos += width;
+		if (drawPos >= 8) {
+			draw(drawColumn, drawX, drawY);
+			drawPos -= 8;
+			drawX++;
+			myMemset(drawColumn, 0x00, LINE_HEIGHT);
+
+			// the last glyph was only partially drawn so we need to prepare the
+			// drawColumn for the next iteration. we don't need to draw it, just
+			// prepare it
+			if (drawPos > 0) {
+				int shift = 8 - drawPos;
+				for (int l = 0; l < LINE_HEIGHT; l++) {
+					// bit pattern for the glyph at the current scanline
+					int b = g.data[l];
+					drawColumn[l] |= b << shift;
+				}
+			}
+		}
+
+		prev = c;
 	}
 
-	prevOutputChar = c;
-
-	wordBuffer[wordBufferIdx] = c;
-	wordBufferIdx++;
-
-	// flush buffer on whitespace or when buffer is full
-	if (c == '\n' || c == ' ' || c == '\t' || wordBufferIdx >= CHARS_PER_ROW) {
-		flushWordBuffer();
-	}
+	draw(drawColumn, drawX, drawY);
 }
 
 void flushWordBuffer() {
 	// if word cannot fit on the current line, insert a newline before
 	// continuing
-	if (outputX + wordBufferIdx >= CHARS_PER_ROW) {
+	if (drawX + wordBufferIdx >= CHARS_PER_ROW) {
 		nextOutputLine();
 	}
 
-	for (int i = 0; i < wordBufferIdx; i++) {
-		int v = updateScr(wordBuffer[i], outputX, outputY);
-		switch (v) {
-			case 1:
-				// normal output
-				outputX++;
-				if (outputX >= CHARS_PER_ROW) {
-					nextOutputLine();
-				}
-				break;
-
-			case 2:
-				// newline character
-				nextOutputLine();
-				break;
-		}
-	}
-
+	drawText(wordBuffer, wordBufferIdx);
+	lineX += wordBufferIdx;
 	wordBufferIdx = 0;
 }
 
+void updateWordBuffer(const char c) {
+	// prevent double-spaces
+	if (c == ' ' && prevOutputChar == ' ' && drawX > 0) {
+		return;
+	}
+
+	prevOutputChar = c;
+	wordBuffer[wordBufferIdx] = c;
+	wordBufferIdx++;
+
+	// flush buffer on newline a space or when buffer is full
+	if (c == '\n' || c == ' ' || wordBufferIdx >= CHARS_PER_ROW) {
+		flushWordBuffer();
+	}
+}
 
 // _printf should only be used for output from the engine
 void _printf(const char * s, ...) {
@@ -606,6 +588,8 @@ void _printf(const char * s, ...) {
 	prevOutputChar = '\0';
 
 	va_end(ap);
+
+	flushWordBuffer();
 }
 
 void clrscr() {
@@ -614,8 +598,11 @@ void clrscr() {
 	#define CLEAR_DATASTREAM _DATASTREAMS_SIZE / 4
 
 	myMemsetInt((unsigned int *)RAM+_DATASTREAMS_ORIGIN-4, 0x00, CLEAR_DATASTREAM);
-	outputY = 0;
-	outputX = 0;
+	drawY = 0;
+	drawX = 0;
+
+	myMemset(drawColumn, 0x00, LINE_HEIGHT);
+	drawPos = 0;
 }
 
 int _toupper(int c) {
@@ -647,7 +634,7 @@ int kbhit(){
 }
 
 int wherex(){
-	return outputX;
+	return drawX;
 }
 
 unsigned int _rand() {
@@ -655,14 +642,12 @@ unsigned int _rand() {
 }
 
 void nextOutputLine() {
-	// no blank line if output cursor is at the beginning of the screen
-	if (outputY == 0 && outputX == 0) {
-		return;
-	}
-
-	outputY++;
-	outputX = 0;
-	if (outputY >= CHARS_PER_DATASTREAM-1) {
+	drawY++;
+	drawX = 0;
+	lineX = 0;
+	myMemset(drawColumn, 0x00, LINE_HEIGHT);
+	drawPos = 0;
+	if (drawY >= CHARS_PER_DATASTREAM-1) {
 		scrollscr();
 	}
 }
@@ -676,7 +661,7 @@ void scrollscr() {
 	// the copy distance within the datastream
 	#define SCROLL_COPY_OFFSET _SCANLINES_IN_DATASTREAM - SCROLL_PRESERVE
 
-	// we need to adjust outputY which is measure in characters rather than
+	// we need to adjust drawY which is measure in characters rather than
 	// scanlines
 	#define SCROLL_CHARS CHARS_PER_DATASTREAM / 4
 
@@ -696,5 +681,5 @@ void scrollscr() {
 		}
 	}
 
-	outputY = SCROLL_CHARS;
+	drawY = SCROLL_CHARS;
 }

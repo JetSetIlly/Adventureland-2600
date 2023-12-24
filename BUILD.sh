@@ -11,7 +11,8 @@ CC="$TOOLCHAIN"-gcc
 OBJCOPY="$TOOLCHAIN"-objcopy
 SIZE="$TOOLCHAIN"-size
 
-OPTIMISATION="-Os"
+#OPTIMISATION="-Os"
+OPTIMISATION="-O2"
 CFLAGS_NOWARN="-I arm/includes -g3 -gdwarf-4 -gstrict-dwarf -mcpu=arm7tdmi -march=armv4t -mthumb -ffunction-sections -Wl,--build-id=none"
 CFLAGS_NOWARN="$CFLAGS_NOWARN $OPTIMISATION"
 CFLAGS="$CFLAGS_NOWARN -Wall -Wno-missing-prototypes"
@@ -74,7 +75,7 @@ function assemble6507 {
 }
 
 # remove any generated files from previous compilation
-clean
+# clean
 
 # touch main ARM binary to make sure it exists. first 6507 assembly will fail otherwise
 touch arm/main.bin

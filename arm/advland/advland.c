@@ -92,7 +92,7 @@ void stepAdvland() {
 }
 
 void prompt() {
-  _printf("\nTell me what to do? ");
+  _printf("Tell me what to do?");
 }
 
 /* Empty keyboard buffer */
