@@ -37,8 +37,6 @@
 SCANLINE	ds 1
 FRAMENUM	ds 1
 KEYPAD		ds 1
-_THREE_COUNT_STATE ds 1
-
 
 ; ----------------------------------
 ; SCREEN TIMINGS
@@ -112,43 +110,12 @@ _SCANLINES_IN_DATASTREAM = VISIBLE_SCANLINES
 ; 
 ; note that the ARM program may pack multiple glyphs into a single datastream
 ; but we don't need to know about this in in the 6507 program
-_NUM_DATASTREAMS = 15
+_NUM_DATASTREAMS = 12
 
 ; the first datastream to use for column retrieval. the ARM program uses
 ; consecutive datastreams up to _NUM_DATASTREAMS. in this 6507 program we
 ; reference DS0DATA, DS1DATA, DS2DATA etc.
 _DATASTREAM_BASE_REG = DS0DATA
-
-
-; ----------------------------------
-; THREE COUNT MACROS
-
-	MAC THREE_COUNT_SETUP_X
-		; require 8bit memory address labelled _THREE_COUNT_STATE
-		LDX #$2									; 2
-		STX _THREE_COUNT_STATE	; 3
-		; 5 cycles
-	ENDM
-
-	MAC THREE_COUNT_UPDATE_X
-		; require 8bit memory address labelled _THREE_COUNT_STATE
-		LDX _THREE_COUNT_STATE	; 3
-		DEX											; 2
-		BPL .store_cycle_count	; 2/3
-		LDX #$2									; 2
-.store_cycle_count
-		STX _THREE_COUNT_STATE	; 3
-		; 12/13 cycles
-	ENDM
-
-	MAC THREE_COUNT_CMP_X
-		; require 8bit memory address labelled _THREE_COUNT_STATE
-		; result - branch on BEQ, BMI and BPL - check for equality before positivity (equality implies positivity)
-		LDX _THREE_COUNT_STATE	; 3
-		DEX											; 2
-		; 5 cycles
-	ENDM
-
 
 ; ----------------------------------
 ; SETUP OF CARTRIDGE
@@ -160,7 +127,6 @@ _DATASTREAM_BASE_REG = DS0DATA
 
 init
 	CLEAN_START
-	THREE_COUNT_SETUP_X
 	
 	; left keypad on
     lda    #$f0
@@ -180,15 +146,23 @@ init
 	ldx #$ff 
 	stx CALLFN
 
-	ldx #$f0
+	lda #$f0
+	sta PF0
+	lda #$ff
+	sta CTRLPF
+
+	ldx #06
+	stx NUSIZ0
+	ldx #06
+	stx NUSIZ1
+
+	lda #$c4
+	sta COLUPF
+	ldx #$c2
 	stx COLUBK
-	ldx #$fd
+	ldx #$cc
 	stx COLUP0
 	stx COLUP1
-	ldx #03
-	stx NUSIZ0
-	ldx #01
-	stx NUSIZ1
 
 	ldx #$2 ; prep for VSYNC on
 	stx VBLANK ; turn on VBLANK
@@ -223,14 +197,35 @@ vblank
 	ldx #$ff
 	stx CALLFN
 
-	THREE_COUNT_UPDATE_X
-	THREE_COUNT_CMP_X
-	beq setPositionsB
-	bpl setPositionsC
+	inc FRAMENUM
+	lda FRAMENUM
+	and #$01
+	bne setPositionsB
 
 setPositionsA
 	sta WSYNC
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
 	sta RESP0
+	sta WSYNC
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
 	nop
 	nop
 	nop
@@ -264,7 +259,7 @@ setPositionsB
 	nop
 	nop
 	nop
-	nop 
+	nop 0
 	sta RESP0
 	sta WSYNC
 	nop
@@ -283,67 +278,11 @@ setPositionsB
 	nop
 	nop
 	nop
-	nop 
+	nop 0
 	sta RESP1
 	ldx #$f0
 	stx HMP0
 	ldx #$d0
-	stx HMP1
-	jmp vblankWaitStart
-
-setPositionsC
-	sta WSYNC
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop 0
-	sta RESP0
-	sta WSYNC
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop 0
-	sta RESP1
-	ldx #$e0
-	stx HMP0
-	ldx #$c0
 	stx HMP1
 	jmp vblankWaitStart
 
@@ -362,10 +301,9 @@ vblankWait
 	; first line starts with a WSYNC so decrease scanline count immediately
 	dec SCANLINE
 
-	THREE_COUNT_CMP_X
-	beq screenB
-	bpl screenC
-
+	lda FRAMENUM
+	and #$01
+	bne screenB
 
 ; ----------------------------------
 ; MAIN DISPLAY RENDERING
@@ -376,15 +314,25 @@ screenA
 	sta GRP0
 	lda #_DATASTREAM_BASE_REG+1
 	sta GRP1
-	lda #_DATASTREAM_BASE_REG+3
-	tax
-	lda #_DATASTREAM_BASE_REG+4
-	tay
+
+	lda SCANLINE 
+	sta PF0 
 	nop 0
-	lda #_DATASTREAM_BASE_REG+2
+	nop 
+	nop 
+	nop 
+	nop
+
+	lda #_DATASTREAM_BASE_REG+5
+	tax
+	lda #_DATASTREAM_BASE_REG+8
+	tay
+	lda #_DATASTREAM_BASE_REG+4
 	sta GRP0
 	stx GRP1
 	sty GRP0
+	lda #_DATASTREAM_BASE_REG+9
+	sta GRP1
 
 	; scanline check for end of visible screen
 	dec SCANLINE
@@ -393,68 +341,37 @@ screenA
 
 screenB
 	sta WSYNC
-	lda #_DATASTREAM_BASE_REG+5
+	lda #_DATASTREAM_BASE_REG+2
 	sta GRP0
-	lda #_DATASTREAM_BASE_REG+6
+	lda #_DATASTREAM_BASE_REG+3
 	sta GRP1
-	lda #_DATASTREAM_BASE_REG+8
-	tax
-	lda #_DATASTREAM_BASE_REG+9
-	tay
+
+	lda SCANLINE 
+	sta PF0 
+	nop 0
 	nop
 	nop
 	nop
 	nop
+	nop 
 	nop
 	nop
-	nop
-	nop
-	nop
+
 	lda #_DATASTREAM_BASE_REG+7
+	tax
+	lda #_DATASTREAM_BASE_REG+10
+	tay
+	lda #_DATASTREAM_BASE_REG+6
 	sta GRP0
 	stx GRP1
 	sty GRP0
+	lda #_DATASTREAM_BASE_REG+11
+	sta GRP1
 
 	; scanline check for end of visible screen
 	dec SCANLINE
 	beq overscan
 	jmp screenB
-
-screenC
-	sta WSYNC
-	lda #_DATASTREAM_BASE_REG+10
-	sta GRP0
-	lda #_DATASTREAM_BASE_REG+11
-	sta GRP1
-	lda #_DATASTREAM_BASE_REG+13
-	tax
-	lda #_DATASTREAM_BASE_REG+14
-	tay
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	nop
-	lda #_DATASTREAM_BASE_REG+12
-	sta GRP0
-	stx GRP1
-	sty GRP0
-
-	; scanline check for end of visible screen
-	dec SCANLINE
-	beq overscan
-	jmp screenC
-
 
 ; ----------------------------------
 ; OVERSCAN - KEYPAD DETECTION
