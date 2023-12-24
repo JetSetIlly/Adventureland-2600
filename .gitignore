@@ -1,0 +1,12 @@
+*.swp
+Session.vim
+*.elf
+*.o
+*.map
+*.obj
+*.sym
+*.lst
+advland.bin
+arm/main.bin
+6507/*.bin
+.~lock.*.ods#
