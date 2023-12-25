@@ -24,6 +24,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <stdbool.h>
 #include <stdarg.h>
 #include <defines_cdfj.h>
 #include <advland_helpers.h>
@@ -53,28 +54,9 @@ int drawPos = 0;
 // the -1 is for the prompt character
 #define MAX_INPUT_CHARS CHARS_PER_ROW-1
 
-// previous key pressed and sent as an argument to the VBLANK program. we use
-// this to prevent key repetition.
-int prevInputKey = -1;
-
 // the input string returned by gets(), which is called by stepAdvland()
 char input[MAX_INPUT_CHARS];
-
-// the index to be used next on key input. this is also the position of the
-// cursor for display purposes
 int inputIdx = 0;
-
-// the last key pressed. distinct from prevInputKey. we use this to cycle
-// through available key options in the group.
-int keyGroup = -1;
-
-// the next option in the keyGroup to use. -1 indicates that nothing has yet
-// been done with the current cursor position. 
-int keyGroupOpt = -1;
-
-// the number of times the VBLANK program has been executed. we'll use this to
-// create the flashing cursor.
-int runCountVBLANK = 0;
 
 // the maximum number of characters to buffer before flushing to screen. is
 // flushed at whitespace or when the buffer size is reached.
@@ -96,8 +78,6 @@ void welcome();
 void initialise();
 void setDataStreams();
 int updateInputString(int key);
-void printInputString();
-void printInputCursor();
 void draw(unsigned char c[LINE_HEIGHT], const int x, const int y);
 void drawText(char text[], int length);
 void flushWordBuffer();
@@ -111,29 +91,20 @@ int main() {
 		case _FN_INIT:
 			initialise();
 			setDataStreams();
-			printInputCursor();
 			break;
 		case _FN_GAME_VB:
 			{
-				runCountVBLANK++;
+			bool commit = false;
 
-				int commit = 0;
-				int key = RAM[_INPUT_KEY];
+			// process input
 
-				if (key != prevInputKey && key > 0) {
-					commit = updateInputString(key);
-					printInputString();
-				}
-				prevInputKey = key;
-
-				if (commit) {
-					stepAdvland();
-				}
-
-				setDataStreams();
-				printInputCursor();
+			if (commit == true) {
+				stepAdvland();
 			}
-			break;
+
+			setDataStreams();
+			}
+		break;
 	}
 }
 
@@ -150,11 +121,7 @@ void initialise() {
 	drawX = 0; 
 	drawY = 0;
 	drawPos = 0;
-	prevInputKey = -1;
 	inputIdx = 0;
-	keyGroup = -1;
-	keyGroupOpt = -1;
-	runCountVBLANK = 0;
 	wordBufferIdx = 0;
 	lineX = 0;
 	prevOutputChar = '\0';
@@ -169,207 +136,6 @@ void setDataStreams() {
 		addr = _DATASTREAMS_ORIGIN + (i*_SCANLINES_IN_DATASTREAM);
 		setPointer(_DATASTREAM_BASE_REG+i, addr);
 	}
-}
-
-// returns 1 if input is to be committed
-int updateInputString(int key) {
-	// hash key. commit input
-	if (key == 12) {
-		keyGroup = -1;
-		keyGroupOpt = -1;
-		return 1;
-	}
-
-	// asterisk key. delete last character
-	if (key == 10) {
-		keyGroup = -1;
-		keyGroupOpt = -1;
-		if (inputIdx > 0) {
-			inputIdx --;
-			input[inputIdx] = ' ';
-		}
-		return 0;
-	}
-
-	// no input past maximum length
-	if (inputIdx >= MAX_INPUT_CHARS) {
-		return 0;
-	}
-
-	// commit last key group
-	if (key == 1) {
-		keyGroup = -1;
-		keyGroupOpt = -1;
-		return 0;
-	}
-	
-	// update key group
-	if (key != keyGroup) {
-		// start new opt sequence
-		keyGroupOpt = 0;
-	} else if (inputIdx > 0) {
-		// if this key is in the same key group as previous key then overwrite
-		// the previous input
-		inputIdx--;
-	}
-	keyGroup = key;
-
-	// most key groups have 3 options but some have a different number. we'll
-	// update and use this value to cycle the 
-	int numOpts = 2;
-
-	switch (keyGroup) {
-		case 2:
-			switch (keyGroupOpt) {
-				case 0:
-					input[inputIdx] = 'A';
-					break;
-				case 1:
-					input[inputIdx] = 'B';
-					break;
-				case 2:
-					input[inputIdx] = 'C';
-					break;
-			}
-			break;
-		case 3:
-			switch (keyGroupOpt) {
-				case 0:
-					input[inputIdx] = 'D';
-					break;
-				case 1:
-					input[inputIdx] = 'E';
-					break;
-				case 2:
-					input[inputIdx] = 'F';
-					break;
-			}
-			break;
-		case 4:
-			switch (keyGroupOpt) {
-				case 0:
-					input[inputIdx] = 'G';
-					break;
-				case 1:
-					input[inputIdx] = 'H';
-					break;
-				case 2:
-					input[inputIdx] = 'I';
-					break;
-			}
-			break;
-	}
-	switch (keyGroup) {
-		case 5:
-			switch (keyGroupOpt) {
-				case 0:
-					input[inputIdx] = 'J';
-					break;
-				case 1:
-					input[inputIdx] = 'K';
-					break;
-				case 2:
-					input[inputIdx] = 'L';
-					break;
-			}
-			break;
-		case 6:
-			switch (keyGroupOpt) {
-				case 0:
-					input[inputIdx] = 'M';
-					break;
-				case 1:
-					input[inputIdx] = 'N';
-					break;
-				case 2:
-					input[inputIdx] = 'O';
-					break;
-			}
-			break;
-		case 7:
-			switch (keyGroupOpt) {
-				case 0:
-					input[inputIdx] = 'P';
-					break;
-				case 1:
-					input[inputIdx] = 'Q';
-					break;
-				case 2:
-					input[inputIdx] = 'R';
-					break;
-				case 3:
-					input[inputIdx] = 'S';
-					break;
-			}
-			numOpts = 3;
-			break;
-	}
-	switch (keyGroup) {
-		case 8:
-			switch (keyGroupOpt) {
-				case 0:
-					input[inputIdx] = 'T';
-					break;
-				case 1:
-					input[inputIdx] = 'U';
-					break;
-				case 2:
-					input[inputIdx] = 'V';
-					break;
-			}
-			break;
-		case 9:
-			switch (keyGroupOpt) {
-				case 0:
-					input[inputIdx] = 'W';
-					break;
-				case 1:
-					input[inputIdx] = 'X';
-					break;
-				case 2:
-					input[inputIdx] = 'Y';
-					break;
-				case 3:
-					input[inputIdx] = 'Z';
-					break;
-			}
-			numOpts = 3;
-			break;
-
-		// case 10 has been handled (backspace)
-		
-		case 11:
-			keyGroup = -1;
-			keyGroupOpt = -1;
-
-			// don't allow space as the first character in the input and do not
-			// allow consecutive spaces
-			if (inputIdx == 0 || input[inputIdx-1] == ' ') {
-				return 0;
-			}
-
-			input[inputIdx] = ' ';
-			inputIdx++;
-			return 0;
-
-		// case 12 has been handled (return/commit)
-	}
-
-	// prepare next key option
-	keyGroupOpt++;
-	if (keyGroupOpt > numOpts) {
-		keyGroupOpt = 0;
-	}
-
-	inputIdx++;
-
-	return 0;
-}
-
-void printInputString() {
-}
-
-void printInputCursor() {
 }
 
 void draw(unsigned char c[LINE_HEIGHT], const int x, const int y) {

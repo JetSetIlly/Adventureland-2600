@@ -45,41 +45,15 @@ KEYPAD		ds 1
 ; before the first WSYNC that leads into the screen region.
 
 VBLANKTIMER = 48 ; starts main screen at scanline 40
-OVERSCANTIMER = 36 
+OVERSCANTIMER = 31 
 
-; the scanlines in the visible part of the screen are counted manually. ideally
-; this would be 192 but the keypad reading code is CPU expensive and it will
-; overrun the overscan timer. 188 is the highest value that is a multiple of 4 and
-; that keeps the kernel within NTSC spec (see comment below)
-VISIBLE_SCANLINES = 188
+; the scanlines in the visible part of the screen are counted manually
+VISIBLE_SCANLINES = 192
 
 ; check that VISIBLE_SCANLINES value is a multiple of four. issue warning if is not
 #if VISIBLE_SCANLINES % 4 != 0
 	echo "VISIBLE_SCANLINES shoule be a multiple of 4"
 #endif
-
-; there must be a 400us delay before reading the INPTx registers after
-; writing to SWCHA. for a CPU running at 1.19Mhz a cycle takes 0.8403us.
-; 400us therefore will require 476.02 cycles
-;
-; DEY takes two cycles and a successful BNE takes three cycles. LDY also
-; takes two cycles and the final (unsuccessful) BNE takes two cycles; so
-; using a value of 472, we need to loop "waitKeypad" 95 times.
-KEYPAD_DELAY = 95
-
-; there is a balance between VISIBLE_SCANLINES, OVERSCANTIMER and the delay
-; between writing to SWCHA and reading INPTx registers when scanning the
-; keypad.
-;
-; for a "delay" of $5f (the number of loop iterations) there can be no more
-; than 188 VISIBLE_SCANLINES giving us a value of 36 for the OVERSCANTIMER.
-;
-; for a "delay" of $78 which some example code uses, the number of
-; VISIBLE_SCANLINES is 182 and an OVERSCAN_TIMER of 31.
-;
-; if my calculated delay value of $5f is wrong (ie doesn't work on real
-; hardware) then the alternative values can be used.
-
 
 
 ; ----------------------------------
@@ -96,8 +70,7 @@ KEYPAD_DELAY = 95
 ; ----------------------------------
 ; ARM - SHARED DEFINITIONS
 
-; program functions (there is no overscan function. keypad reading is very
-; expensive). these values are passed to the ARM program as the first
+; program functions. these values are passed to the ARM program as the first
 ; parameter. see _CALFN_PARAMETERS values below
 _FN_INIT = 0 
 _FN_GAME_VB = 1
@@ -128,10 +101,6 @@ _DATASTREAM_BASE_REG = DS0DATA
 init
 	CLEAN_START
 	
-	; left keypad on
-    lda    #$f0
-    sta    SWACNT        ; output for 4 bits for left port
-
 	; Fast Fetch mode must be turned on so we can read the datastreams
 	ldx #FASTON
 	stx SETMODE
@@ -384,32 +353,6 @@ overscan
 	sty TIM64T
 	sta WSYNC
 
-	; read keypad
-    lda    #$ff
-    ldx    #$0c
-    clc
-newKeypadRow
-    ror
-    sta    SWCHA
-
-    ldy    #KEYPAD_DELAY
-waitKeypad
-    dey
-    bne    waitKeypad
-
-    bit    INPT4
-    bpl    endKeypad
-    dex
-    bit    INPT1
-    bpl    endKeypad
-    dex
-    bit    INPT0
-    bpl    endKeypad
-    dex
-    bne    newKeypadRow
-endKeypad
-	stx    KEYPAD
-	
 	ldx #$2 ; prep for VSYNC on
 overscanWait
 	bit TIMINT ; using OVERSCANTIMER
