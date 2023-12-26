@@ -162,47 +162,9 @@ void drawText(char text[], int length) {
 		}
 
 		// the glyph to use by default
-		struct glyph g = symbolGlyphs[placeholderGlyph];
+		struct glyph g = asciiGlyphs[(c&asciiMask)-asciiAdj];
 
-		if (c >= '0' && c <= '9') {
-			g = digitsGlyphs[c-numberAdj];
-		} else if (c >= 'A' && c <= 'Z') {
-			g = upperCaseGlyphs[c-upperCaseAdj];
-		} else if (c >= 'a' && c <= 'z') {
-			g = upperCaseGlyphs[c-lowerCaseAdj];
-		} else if (c == ' ') {
-			g = symbolGlyphs[spaceGlyph];
-		} else if (c == '&') {
-			g = symbolGlyphs[ampersandGlyph];
-		} else if (c == '-') {
-			g = symbolGlyphs[hyphenGlyph];
-		} else if (c == '*') {
-			g = symbolGlyphs[asteriskGlyph];
-		} else if (c == '?') {
-			g = symbolGlyphs[questionMarkGlyph];
-		} else if (c == '(' || c == '[' || c == '{') {
-			g = symbolGlyphs[openParenGlyph];
-		} else if (c == ')' || c == ']' || c == '}') {
-			g = symbolGlyphs[closeParenGlyph];
-		} else if (c == '_') {
-			g = symbolGlyphs[underscoreGlyph];
-		} else if (c == '"') {
-			g = symbolGlyphs[quoteGlyph];
-		} else if (c == 0xff) {
-			g = symbolGlyphs[cursorGlyph];
-		} else if (c == '.') {
-			g = symbolGlyphs[fullStopGlyph];
-		} else if (c == ',') {
-			g = symbolGlyphs[commaGlyph];
-		} else if (c == '\'') {
-			g = symbolGlyphs[apostropheGlyph];
-		} else if (c == '\0') {
-			break; // for loop
-		} else {
-			prev = c;
-			continue; // for loop
-		}
-
+		// the width of the glyph including any kerning adjustments
 		int width = g.width;
 		for (int i = 0; i < numKernings; i++) {
 			struct kerning d = kernings[i];
