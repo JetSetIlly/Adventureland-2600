@@ -30,6 +30,8 @@ Scott Adams for the original Adventureland
 
 Morten Lohre for the C port
 
+Font glyphs partly taken from [work done by Spiceware and others](https://forums.atariage.com/topic/180632-32-character-text-display/page/4/#comment-2545745)
+
 ### Licence
 
 All files with a licencing header are distributed under the BSD 2-Clause licence. All other files are (as far as I know) in the public domain.
