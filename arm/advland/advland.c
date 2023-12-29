@@ -61,10 +61,10 @@ void initAdvland(void)
   lx = LT;
   df = 0;
   sf = 0;
+  NV[0] = 0;
 
   clrscr();
   look();
-  NV[0] = 0;
   prompt();
 }
 
@@ -92,7 +92,7 @@ void stepAdvland() {
 }
 
 void prompt() {
-  _printf("Tell me what to do?");
+  _printf("\nTell me what to do?\n");
 }
 
 /* Empty keyboard buffer */
@@ -233,7 +233,7 @@ void look(void)
 	_printf("%s ",NVS[1][i + 1]);
       }
     }
-    _printf("\n\n");
+    _printf("\n");
   }
 }
 

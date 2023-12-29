@@ -24,7 +24,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// number of scanlines in a glyph
+// number of scanlines in a glyph. any ascenders and descenders for the glyph is
+// included in this value
 #define LINE_HEIGHT  6
 
 // the number of scanlines between character rows
@@ -39,6 +40,10 @@ struct glyph {
 
 #define asciiMask 0x7f
 #define asciiAdj 32
+
+#define upperCaseAoffset  33
+#define upperCaseIoffset  41
+#define upperCaseZoffset  58
 
 const struct glyph asciiGlyphs[] = {
 	[32-asciiAdj] ={{0,0,0,0,0}, 3}, // space
@@ -108,7 +113,7 @@ const struct glyph asciiGlyphs[] = {
 	[92-asciiAdj] ={{0,7,5,7,0}, 4}, // placeholder (\)
 	[93-asciiAdj] ={{0,7,5,7,0}, 4}, // placeholder (])
 	[94-asciiAdj] ={{0,7,5,7,0}, 4}, // placeholder (^)
-	[95-asciiAdj] ={{0,7,5,7,0}, 4}, // placeholder (_)
+	[95-asciiAdj] ={{0,0,0,7,0}, 4}, // placeholder (_)
 	[96-asciiAdj] ={{0,7,5,7,0}, 4}, // placeholder (`)
 
 	[97-asciiAdj] ={{0,2,5,5,3}, 4}, // a
@@ -144,13 +149,25 @@ const struct glyph asciiGlyphs[] = {
 	[126-asciiAdj] ={{0,7,5,7,0}, 4}, // placeholder (~)
 };
 
+// the I we use for the text area isn't really suitable to display on
+// the keyboard, this is the replacement
+struct glyph keyboardLetterI = {{7,2,2,2,7}, 4};
+
+// other keys on the keyboard have special glyphs
+struct glyph keyboardSpace = {{0,0,0,0,7}, 4};
+struct glyph keyboardBackSpace = {{1,3,7,3,1}, 4};
+struct glyph keyboardReturn = {{7,7,5,7,7}, 4};
+
+// text input cursor
+struct glyph inputCursor = {{0,0,0,0,3}, 3};
+
 struct kerning {
 	char previous;
 	char current;
 	int adj;
 };
 
-#define numKernings 9
+#define numKernings 11
 
 const struct kerning kernings[numKernings] = {
 	[0] = {'T', '.', 1},
@@ -162,5 +179,7 @@ const struct kerning kernings[numKernings] = {
 	[6] = {'t', '.', 1},
 	[7] = {'t', ',', 1},
 	[8] = {'o', '?', 1},
+	[9] = {'(', 's', 1},
+	[10] = {')', ' ', 1},
 };
 
