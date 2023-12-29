@@ -8,34 +8,11 @@ The `advland.bin` file must be run on either a `Harmony` or `Melody` cartridge o
 
 ### Playing the Game
 
-The game must be played with the `Atari2600` keypad plugged into the left player port. If playing with `Stella` you must manually set the controller to keyboard the first time you play the binary. if playing with `Gopher2600` the keyboard will automatically be detected.
+The game is played with the joystick plugged into the left-player port. Use the joystick to select a letter on the on-screen keyboard and the fire button to `type` the letter. The currently typed word appears just above the on-screen keyboard.
 
-Letters are entered in a similar fashion to how you would enter them on a phone keypad. For example, to enter the letter `G` you press the `4` button on the keypad. To enter the letter `O` meanwhile, you would press the `6` button three times.
+<img src=".screenshots/special_chars.png"/>
 
-The following list shows the keys with the corresponding letter groups. Note that letter groups will "cycle". For example, pressing the `2` button four times will select `A` (the letter group having cycled back to the beginning).
-
-| Keypad | Letters |
-|:------:|:-------:|
-| 1      | special |
-| 2      | A B C   |
-| 3      | D E F   |
-| 4      | G H I   |
-| 5      | J K L   |
-| 6      | M N O   |
-| 7      | Q R S T |
-| 8      | U V W   |
-| 9      | X Y Z   |
-| 0      | space   |
-| *      | delete  |
-| #      | return  |
-
-The `1` key is special in that it accepts the currently selected letter and moves the cursor along. You only need to use this however if the next letter is in the same group as the current letter.
-
-For example, to enter the word `LOOK` you would enter `L` by pressing the `5` button three times; the first `O` is entered by pressing the `6` button three times. The second `O` however (because it shares the same key) cannot be entered immediately and you must press the `1` button first.
-
-It's tricky to describe but straight forward after some practice.
-
-**The buttons quoted above refer to the buttons on the hardware keypad. If playing through an emulator you must consider which buttons on your computer keyboard correspond to the buttons on the keypad. See `Stella` or `Gopher2600` documenation for details.**
+The above image shows the `special` characters on the keyboard. From left to right, the characters are `space`, `backspace` and `return`. These mimic the corresponding keys on a normal PC keyboard.
 
 ### Technical Details
 
@@ -52,7 +29,6 @@ I believe it should be possible to have a 30 character display over two frames (
 Scott Adams for the original Adventureland
 
 Morten Lohre for the C port
-
 
 ### Licence
 
