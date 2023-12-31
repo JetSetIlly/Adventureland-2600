@@ -14,15 +14,13 @@ The game is played with the joystick plugged into the left-player port. Use the 
 
 The above image shows the `special` characters on the keyboard. From left to right, the characters are `space`, `backspace` and `return`. These mimic the corresponding keys on a normal PC keyboard.
 
+If you have a second joystick plugged into the console then it can be used to quickly move in the cardinal compass directions. ie. Up for `GO NORTH`, Left for `GO WEST`, etc.
+
 ### Technical Details
 
 As far as possible, the original C code has not been changed. Where it has been changed it is only for reasons of accomodating the limitations of the `Atari2600`. Changes made are documented in the `CHANGES.TXT` file in the `arm/advland` directory.
 
 It is likely that some situations will cause the television image to roll briefly. This will depend on the television or emulator settings. The roll is caused by the advland program taking too long for the base 2600 hardware. Without changing more of the C code to accomodate these limitations there is very little that can be done to prevent this.
-
-The `Atari2600` was in no way designed to display text so getting it to display `adventureland` is challenging. For this first version, I have written a very simple text renderer capable of drawing 15 columns of text. Each column can fit two letter `glyphs`, giving a 30 character display. The 15 columns are drawn in groups of five over three frames causing considerable flicker, so a television or emulator setting with high phosphor fade is recommended.
-
-I believe it should be possible to have a 30 character display over two frames (rather than three) but I have not yet tackled that problem.
 
 ### Acknowledgements
 
@@ -31,6 +29,8 @@ Scott Adams for the original Adventureland
 Morten Lohre for the C port
 
 Font glyphs partly taken from [work done by Spiceware and others](https://forums.atariage.com/topic/180632-32-character-text-display/page/4/#comment-2545745)
+
+Thanks to Bomberman94 of AtariAge for feedback on earlier versions of the game
 
 ### Licence
 
