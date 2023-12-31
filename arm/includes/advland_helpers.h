@@ -11,3 +11,6 @@ char * _gets(char *);
 int _getch();
 int _toupper(int);
 unsigned int _rand();
+
+// notify that game has ended
+void endgame();

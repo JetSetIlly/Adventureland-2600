@@ -86,9 +86,9 @@ void stepAdvland() {
 		}
 		NV[0] = 0;
 		turn();
+		prompt();
       }
     }
-  prompt();
 }
 
 void prompt() {
@@ -96,25 +96,25 @@ void prompt() {
 }
 
 /* Empty keyboard buffer */
-void empty_keyboardbuffer(void)
-{
-  while (kbhit()!=0) _getch();
-}
+/* void empty_keyboardbuffer(void) */
+/* { */
+/*   while (kbhit()!=0) getch(); */
+/* } */
 
 /* Empty keyboard, get Y(es) or N(o), _printf character with carriage return */
-int yes_no(void)
-{
-  int ch;
+/* int yes_no(void) */
+/* { */
+/*   int ch; */
 
-  empty_keyboardbuffer();  /* empty keyboardbuffer */
-  do
-  {
-    ch = _getch();
-    if (ch > 96) ch = ch - 32;
-  } while (ch!=89 && ch!=78);
-  _printf("%c\n",ch);
-  return(ch==89);  /* 1 if Y, 0 if N */
-}
+/*   empty_keyboardbuffer();  /1* empty keyboardbuffer *1/ */
+/*   do */
+/*   { */
+/*     ch = getch(); */
+/*     if (ch > 96) ch = ch - 32; */
+/*   } while (ch!=89 && ch!=78); */
+/*   _printf("%c\n",ch); */
+/*   return(ch==89);  /1* 1 if Y, 0 if N *1/ */
+/* } */
 
 /* Welcome */
 void welcome(void)
@@ -133,7 +133,7 @@ void welcome(void)
   _printf("HAPPY ADVENTURING!!!\n\n\n\n\n");
   empty_keyboardbuffer();
   _printf("************************** Press any key to continue **************************");
-  /* while (_getch()==0); */
+  /* while (getch()==0); */
   /* clrscr(); */
 }
 
@@ -354,13 +354,16 @@ void action(int ac, int *ip)
   }
   if (ac == 63)
   {
-    _printf("The game is now over.\nAnother game? ");
-    if (!yes_no())  /* No */ endflag = 1;
-    else /* Yes */
-    {
-      for (i=0;i<IL;i++) IA[i] = I2[i];
-      loadflag = 1;
-    }
+    _printf("The game is now over.\n");
+	endflag = 1;
+	endgame();
+    /* _printf("The game is now over.\nAnother game? "); */
+    /* if (!yes_no())  /1* No *1/ endflag = 1; */
+    /* else /1* Yes *1/ */
+    /* { */
+    /*   for (i=0;i<IL;i++) IA[i] = I2[i]; */
+    /*   loadflag = 1; */
+    /* } */
   }
   if (ac == 64) look();
   if (ac == 65)
@@ -370,13 +373,16 @@ void action(int ac, int *ip)
     _printf("I've stored %u treasures.  On a scale of 0 to 100, that rates a %u.\n",j,j*divu(100,TT));
     if (j == TT)
     {
-      _printf("Well done.\nThe game is now over.\nAnother game? ");
-      if (!yes_no())  /* No */ endflag = 1;
-      else
-      {
-	for (i=0;i<IL;i++) IA[i] = I2[i];
-	loadflag = 1;
-      }
+      _printf("Well done.\nThe game is now over.\n");
+	endflag = 1;
+	endgame();
+      /* _printf("Well done.\nThe game is now over.\nAnother game? "); */
+      /* if (!yes_no())  /1* No *1/ endflag = 1; */
+      /* else */
+      /* { */
+	/* for (i=0;i<IL;i++) IA[i] = I2[i]; */
+	/* loadflag = 1; */
+      /* } */
     }
   }
   if (ac == 66)

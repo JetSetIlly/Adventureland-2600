@@ -571,6 +571,14 @@ overscan
 	sty TIM64T
 	sta WSYNC
 
+	; check reset button
+	lda SWCHB
+	and #$01
+	cmp #$01
+	beq overscanPrep
+	jmp init
+
+overscanPrep
 	ldx #$2 ; prep for VSYNC on
 overscanWait
 	bit TIMINT ; using OVERSCANTIMER

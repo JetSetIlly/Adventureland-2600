@@ -31,6 +31,9 @@
 #include "glyphs.h"
 #include "shared_defines.h"
 
+// if gameEnded is set then the game has ended
+bool gameEnded = false;
+
 // minimum number of glyphs that can we pack into a data stream. the number may
 // acutally be more because some gylphs are less than 4 pixels wide
 #define CHARS_PER_COLUMN 2
@@ -113,11 +116,17 @@ void submitCommand();
 int main() {
 	switch (RAM[_RUN_FUNC]) {
 		case _FN_INIT:
+			gameEnded = false;
 			initialise();
 			setDataStreams();
 			break;
 		case _FN_GAME:
 		{
+			if (gameEnded == true) {
+				setDataStreams();
+				return 0;
+			}
+
 			if (RAM[_INPT4] != INPT4) {
 				// INPT4 has changed (left player fire button)
 				INPT4 = RAM[_INPT4];
@@ -203,6 +212,8 @@ int main() {
 		}
 		break;
 	}
+
+	return 0;
 }
 
 void initialise() {
@@ -235,6 +246,7 @@ void initialise() {
 	drawTextInput();
 	drawKeyboard();
 }
+
 
 void setDataStreams() {
 	for (int i = 0; i < _NUM_TEXTAREA_DATASTREAMS; i ++ ) {
@@ -514,6 +526,81 @@ void updateWordBuffer(const char c) {
 	}
 }
 
+#define SCROLL_BOUNDARY 1
+
+void nextOutputLine() {
+	drawY++;
+	drawX = 0;
+	lineX = 0;
+	myMemset(drawColumn, 0x00, LINE_HEIGHT);
+	drawPos = 0;
+
+	if (drawY > ROWS_PER_TEXTAREA-SCROLL_BOUNDARY) {
+		scrollscr();
+	}
+}
+
+void scrollscr() {
+	// the copy distance within the datastream
+	#define DISTANCE (SCROLL_BOUNDARY*(LINE_HEIGHT+LINE_SPACING))
+
+	for (int d = 0; d < _NUM_TEXTAREA_DATASTREAMS; d++) {
+		int addr = _TEXTAREA_ORIGIN + (d * _SCANLINES_IN_TEXTAREA);
+
+		// copy scanlines up by specified DISTANCE
+		for (int y = 0; y < _SCANLINES_IN_TEXTAREA-DISTANCE-1; y++) {
+			RAM[addr+y] = RAM[addr+y+DISTANCE-1];
+		}
+
+		// clear remainder of the datastream
+		for (int y = _SCANLINES_IN_TEXTAREA-DISTANCE; y < _SCANLINES_IN_TEXTAREA; y++) {
+			RAM[addr+y] = 0x00;
+		}
+	}
+
+	drawY = ROWS_PER_TEXTAREA - SCROLL_BOUNDARY;
+}
+
+// quickCommand is a way of putting a command into the input buffer and executing it
+void quickCommand(char command[]) {
+	int i;
+	for (i = 0; command[i] != '\0'; i++) {
+		input[i] = command[i];
+	}
+	input[i] = '\0';
+	inputIdx = i;
+	submitCommand();
+}
+
+// submitCommand() displays the input and steps the main advland program
+void submitCommand() {
+	// protect the user from accidentally quitting the game. normally, there
+	// would be a "do you really want to quit?" type prompt but for simplicity
+	// we've removed it
+	switch (inputIdx) {
+	case 1:
+		if (input[0] == 'Q') {
+			return;
+		}
+	case 2:
+		if (input[0] == 'Q' && input [1] == 'U') {
+			return;
+		}
+	case 3:
+		if (input[0] == 'Q' && input[1] == 'U' && input[2] == 'I') {
+			return;
+		}
+	}
+
+	_printf("\n> %s\n", input);
+	nextOutputLine();
+	stepAdvland();
+	drawTextInput();
+	drawKeyboard();
+}
+
+/********************* advland helper function *********************/
+
 // affects the text area
 void clrscr() {
 	// clear integers (32bit) instead of chars (8bit) for performance reasons.
@@ -526,6 +613,14 @@ void clrscr() {
 
 	myMemset(drawColumn, 0x00, LINE_HEIGHT);
 	drawPos = 0;
+}
+
+int wherex() {
+	return lineX;
+}
+
+int kbhit() {
+	return 0;
 }
 
 // _printf should only be used for output from the engine
@@ -608,17 +703,6 @@ void _printf(const char * s, ...) {
 	flushWordBuffer();
 }
 
-int _toupper(int c) {
-	if (c >= 97 && c <= 122) {
-		return c-32;
-	}
-	return c;
-}
-
-int _getch() {
-	return 0;
-}
-
 char * _gets(char *s) {
 	int i;
 	for (i = 0; i < inputIdx; i++) {
@@ -630,69 +714,21 @@ char * _gets(char *s) {
 	return s;
 }
 
-int kbhit(){
+int _getch() {
 	return 0;
 }
 
-int wherex(){
-	return lineX;
+int _toupper(int c) {
+	if (c >= 97 && c <= 122) {
+		return c-32;
+	}
+	return c;
 }
 
 unsigned int _rand() {
 	return getRandom32();
 }
 
-#define SCROLL_BOUNDARY 1
-
-void nextOutputLine() {
-	drawY++;
-	drawX = 0;
-	lineX = 0;
-	myMemset(drawColumn, 0x00, LINE_HEIGHT);
-	drawPos = 0;
-
-	if (drawY > ROWS_PER_TEXTAREA-SCROLL_BOUNDARY) {
-		scrollscr();
-	}
-}
-
-void scrollscr() {
-	// the copy distance within the datastream
-	#define DISTANCE (SCROLL_BOUNDARY*(LINE_HEIGHT+LINE_SPACING))
-
-	for (int d = 0; d < _NUM_TEXTAREA_DATASTREAMS; d++) {
-		int addr = _TEXTAREA_ORIGIN + (d * _SCANLINES_IN_TEXTAREA);
-
-		// copy scanlines up by specified DISTANCE
-		for (int y = 0; y < _SCANLINES_IN_TEXTAREA-DISTANCE-1; y++) {
-			RAM[addr+y] = RAM[addr+y+DISTANCE-1];
-		}
-
-		// clear remainder of the datastream
-		for (int y = _SCANLINES_IN_TEXTAREA-DISTANCE; y < _SCANLINES_IN_TEXTAREA; y++) {
-			RAM[addr+y] = 0x00;
-		}
-	}
-
-	drawY = ROWS_PER_TEXTAREA - SCROLL_BOUNDARY;
-}
-
-// quickCommand is a way of putting a command into the input buffer and executing it
-void quickCommand(char command[]) {
-	int i;
-	for (i = 0; command[i] != '\0'; i++) {
-		input[i] = command[i];
-	}
-	input[i] = '\0';
-	inputIdx = i;
-	submitCommand();
-}
-
-// submitCommand() displays the input and steps the main advland program
-void submitCommand() {
-	_printf("\n> %s\n", input);
-	nextOutputLine();
-	stepAdvland();
-	drawTextInput();
-	drawKeyboard();
+void endgame() {
+	gameEnded = true;
 }
