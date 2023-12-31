@@ -63,8 +63,8 @@ int lineX = 0;
 char prevOutputChar = '\0';
 
 
-// the input string returned by gets(), which is called by stepAdvland(). the
-// values of these variables are changed by the on screen keyboard
+// the input string returned by gets(), which is called by the main advland
+// code. the values of these variables are changed by the on screen keyboard
 #define MAX_INPUT_CHARS 20
 char input[MAX_INPUT_CHARS];
 int inputIdx = 0;
@@ -79,9 +79,14 @@ int inputIdx = 0;
 #define maxSelectedKey returnKey
 int selectedKey = minSelectedKey;
 
+// keyboard dimensions
+#define keyboardWidth  6
+#define keyboardHeight 5
+
 // most recent input values from console
 char SWCHA;
 char INPT4;
+char INPT5;
 
 // adventureland functions
 void initAdvland();
@@ -102,6 +107,8 @@ void flushWordBuffer();
 void updateWordBuffer(const char c);
 void nextOutputLine();
 void scrollscr();
+void quickCommand(char command[]); 
+void submitCommand(); 
 
 int main() {
 	switch (RAM[_RUN_FUNC]) {
@@ -112,62 +119,84 @@ int main() {
 		case _FN_GAME:
 		{
 			if (RAM[_INPT4] != INPT4) {
-				if ((RAM[_INPT4]&0x80) == 0x00) {
-					if (inputIdx < MAX_INPUT_CHARS) {
-						switch (selectedKey) {
-							case spaceKey:
-							   	input[inputIdx] = ' ';
-								inputIdx++;
-								break;
-							case backspaceKey:
-								if (inputIdx > 0) {
-									inputIdx--;
-									input[inputIdx] = '\0';
-								}
-								break;
-							case returnKey:
-								if (inputIdx > 0) {
-									_printf("\n> %s\n", input);
-									nextOutputLine();
-									stepAdvland();
-								}
-								break;
-							default:
-							   	input[inputIdx] = selectedKey + asciiAdj;
-								inputIdx++;
-						}
-						drawTextInput();
-						drawKeyboard();
-					}
-				}
+				// INPT4 has changed (left player fire button)
 				INPT4 = RAM[_INPT4];
+
+				if ((INPT4&0x80) == 0x00) {
+					switch (selectedKey) {
+					case spaceKey:
+						if (inputIdx > 0 && inputIdx < MAX_INPUT_CHARS-1) {
+							input[inputIdx] = ' ';
+							inputIdx++;
+						}
+						break;
+					case backspaceKey:
+						if (inputIdx > 0) {
+							inputIdx--;
+							input[inputIdx] = '\0';
+						}
+						break;
+					case returnKey:
+						if (inputIdx > 0) {
+							submitCommand();
+						}
+						break;
+					default:
+						if (inputIdx < MAX_INPUT_CHARS-1) {
+							input[inputIdx] = selectedKey + asciiAdj;
+							inputIdx++;
+						}
+					}
+					drawTextInput();
+					drawKeyboard();
+				}
+			} else if (RAM[_INPT5] != INPT5) {
+				// INPT5 has changed (right player fire button)
+				INPT5 = RAM[_INPT5];
+
+				if ((INPT5&0x80) == 0x00) {
+					quickCommand("look");
+				}
 			} else if (RAM[_SWCHA] != SWCHA) {
-				if ((RAM[_SWCHA]&0x80) == 0x00) {
+				// SWCHA has changed (joystick direction for both players)
+				SWCHA = RAM[_SWCHA];
+
+				if ((SWCHA&0x80) == 0x00) {
 					if (selectedKey < maxSelectedKey) {
 						selectedKey++;
 						drawKeyboard();
 					}
-				} else if ((RAM[_SWCHA]&0x40) == 0x00) {
+				} else if ((SWCHA&0x40) == 0x00) {
 					if (selectedKey > minSelectedKey) {
 						selectedKey--;
 						drawKeyboard();
 					}
-				} else if ((RAM[_SWCHA]&0x20) == 0x00) {
-					if (selectedKey < maxSelectedKey-6) {
-						selectedKey += 6;
+				} else if ((SWCHA&0x20) == 0x00) {
+					if (selectedKey < maxSelectedKey-keyboardWidth) {
+						selectedKey += keyboardWidth;
 					} else {
 						selectedKey = maxSelectedKey;
 					}
 					drawKeyboard();
-				} else if ((RAM[_SWCHA]&0x10) == 0x00) {
-					if (selectedKey > minSelectedKey+6) {
-						selectedKey -= 6;
+				} else if ((SWCHA&0x10) == 0x00) {
+					if (selectedKey > minSelectedKey+keyboardWidth) {
+						selectedKey -= keyboardWidth;
 					} else {
 						selectedKey = minSelectedKey;
 					}
 					drawKeyboard();
+				} else {
+					// the right player joystick
+					if ((SWCHA&0x08) == 0x00) {
+						quickCommand("go e");
+					} else if ((SWCHA&0x04) == 0x00) {
+						quickCommand("go w");
+					} else if ((SWCHA&0x02) == 0x00) {
+						quickCommand("go s");
+					} else if ((SWCHA&0x01) == 0x00) {
+						quickCommand("go n");
+					}
 				}
-				SWCHA = RAM[_SWCHA];
 			}
 
 			setDataStreams();
@@ -201,6 +230,7 @@ void initialise() {
 	selectedKey = minSelectedKey;
 	SWCHA = RAM[_SWCHA];
 	INPT4 = RAM[_INPT4];
+	INPT5 = RAM[_INPT5];
 
 	drawTextInput();
 	drawKeyboard();
@@ -370,6 +400,14 @@ void drawTextInput() {
 
 	drawTextInputCoords(d, x);
 
+	// draw rest of textinput line. this has the effect of blanking out any
+	// unused text from a previous entry
+	//
+	// the for loop is a bit unusual in that we begin by increasing the existing
+	// x value by one. this is intentional
+	for (x++ ; x < MAX_INPUT_CHARS; x++) {
+		drawTextInputCoords(emptyGlyph.data, x);
+	}
 }
 
 void drawTextAreaCoords(unsigned char c[LINE_HEIGHT], const int x, const int y) {
@@ -637,4 +675,24 @@ void scrollscr() {
 	}
 
 	drawY = ROWS_PER_TEXTAREA - SCROLL_BOUNDARY;
+}
+
+// quickCommand is a way of putting a command into the input buffer and executing it
+void quickCommand(char command[]) {
+	int i;
+	for (i = 0; command[i] != '\0'; i++) {
+		input[i] = command[i];
+	}
+	input[i] = '\0';
+	inputIdx = i;
+	submitCommand();
+}
+
+// submitCommand() displays the input and steps the main advland program
+void submitCommand() {
+	_printf("\n> %s\n", input);
+	nextOutputLine();
+	stepAdvland();
+	drawTextInput();
+	drawKeyboard();
 }

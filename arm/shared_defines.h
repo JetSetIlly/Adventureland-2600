@@ -2,6 +2,7 @@
 #define _FN_GAME                  0x0001
 #define _FN_INIT                  0x0000
 #define _INPT4                    0x0002
+#define _INPT5                    0x0003
 #define _KEYBOARD_DATASTREAM_BASE_REG 0x000d
 #define _KEYBOARD_MEMTOP          0x0814
 #define _KEYBOARD_ORIGIN          0x0724

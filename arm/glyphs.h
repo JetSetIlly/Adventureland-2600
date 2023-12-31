@@ -161,6 +161,9 @@ struct glyph keyboardReturn = {{7,7,5,7,7}, 4};
 // text input cursor
 struct glyph inputCursor = {{0,0,0,0,3}, 3};
 
+// empty glyph used to draw an empty textinput space
+struct glyph emptyGlyph = {{0, 0, 0, 0, 0, 0}, 4};
+
 struct kerning {
 	char previous;
 	char current;

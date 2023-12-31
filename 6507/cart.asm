@@ -132,6 +132,8 @@ init
 	stx DSWRITE 
 	ldx INPT4
 	stx DSWRITE 
+	ldx INPT5
+	stx DSWRITE 
 	ldx #$ff 
 	stx CALLFN
 
@@ -187,6 +189,8 @@ vblank
 	ldx SWCHA
 	stx DSWRITE
 	ldx INPT4
+	stx DSWRITE 
+	ldx INPT5
 	stx DSWRITE 
 	ldx #$ff
 	stx CALLFN
@@ -594,6 +598,7 @@ _CALFN_PARAMETERS
 _RUN_FUNC ds 1
 _SWCHA ds 1
 _INPT4 ds 1
+_INPT5 ds 1
 
 ; the number of bytes required for all data stream collectively
 _TEXTAREA_SIZE = _NUM_TEXTAREA_DATASTREAMS * _SCANLINES_IN_TEXTAREA
