@@ -88,8 +88,8 @@ int selectedKey = minSelectedKey;
 
 // most recent input values from console
 char SWCHA;
-char INPT4;
-char INPT5;
+bool leftPlayerFire;
+bool rightPlayerFire;
 
 // adventureland functions
 void initAdvland();
@@ -127,58 +127,67 @@ int main() {
 				return 0;
 			}
 
-			if (RAM[_INPT4] != INPT4) {
-				// INPT4 has changed (left player fire button)
-				INPT4 = RAM[_INPT4];
+			// whether to redraw the screen
+			bool redrawScreen = false;
 
-				if ((INPT4&0x80) == 0x00) {
-					switch (selectedKey) {
-					case spaceKey:
-						if (inputIdx > 0 && inputIdx < MAX_INPUT_CHARS-1) {
-							input[inputIdx] = ' ';
-							inputIdx++;
-						}
-						break;
-					case backspaceKey:
-						if (inputIdx > 0) {
-							inputIdx--;
-							input[inputIdx] = '\0';
-						}
-						break;
-					case returnKey:
-						if (inputIdx > 0) {
-							submitCommand();
-						}
-						break;
-					default:
-						if (inputIdx < MAX_INPUT_CHARS-1) {
-							input[inputIdx] = selectedKey + asciiAdj;
-							inputIdx++;
-						}
+			// INPT4 (left player fire button)
+			bool f = (RAM[_INPT4]&0x80) == 0x00;
+			if (f == 0x00 && f != leftPlayerFire) {
+				switch (selectedKey) {
+				case spaceKey:
+					if (inputIdx > 0 && inputIdx < MAX_INPUT_CHARS-1) {
+						input[inputIdx] = ' ';
+						inputIdx++;
+						redrawScreen = true;
 					}
-					drawTextInput();
-					drawKeyboard();
+					break;
+				case backspaceKey:
+					if (inputIdx > 0) {
+						inputIdx--;
+						input[inputIdx] = '\0';
+						redrawScreen = true;
+					}
+					break;
+				case returnKey:
+					if (inputIdx > 0) {
+						submitCommand();
+						// not redrawing screen after submitCommand() because
+						// the screen will be redrawn as a consequence of the
+						// submission
+					}
+					break;
+				default:
+					if (inputIdx < MAX_INPUT_CHARS-1) {
+						input[inputIdx] = selectedKey + asciiAdj;
+						inputIdx++;
+						redrawScreen = true;
+					}
 				}
-			} else if (RAM[_INPT5] != INPT5) {
-				// INPT5 has changed (right player fire button)
-				INPT5 = RAM[_INPT5];
+			}
+			leftPlayerFire = f;
 
-				if ((INPT5&0x80) == 0x00) {
-					quickCommand("look");
-				}
-			} else if (RAM[_SWCHA] != SWCHA) {
+			// right player fire button
+			f = (RAM[_INPT5]&0x80) == 0x00;
+			if (f == 0x00 && f != rightPlayerFire) {
+		 		quickCommand("look"); 
+				redrawScreen = true;
+			}
+			rightPlayerFire = f;
+
+			// joysticks 
+			if (RAM[_SWCHA] != SWCHA) {
 				// SWCHA has changed (joystick direction for both players)
 				SWCHA = RAM[_SWCHA];
 
 				if ((SWCHA&0x80) == 0x00) {
 					if (selectedKey < maxSelectedKey) {
 						selectedKey++;
-						drawKeyboard();
+						redrawScreen = true;
 					}
 				} else if ((SWCHA&0x40) == 0x00) {
 					if (selectedKey > minSelectedKey) {
 						selectedKey--;
-						drawKeyboard();
+						redrawScreen = true;
 					}
 				} else if ((SWCHA&0x20) == 0x00) {
 					if (selectedKey < maxSelectedKey-keyboardWidth) {
@@ -186,16 +195,18 @@ int main() {
 					} else {
 						selectedKey = maxSelectedKey;
 					}
-					drawKeyboard();
+					redrawScreen = true;
 				} else if ((SWCHA&0x10) == 0x00) {
 					if (selectedKey > minSelectedKey+keyboardWidth) {
 						selectedKey -= keyboardWidth;
 					} else {
 						selectedKey = minSelectedKey;
 					}
-					drawKeyboard();
+					redrawScreen = true;
 				} else {
-					// the right player joystick
+					// not redrawing screen after quickCommand() because
+					// the screen will be redrawn as a consequence of the
+					// submission
 					if ((SWCHA&0x08) == 0x00) {
 						quickCommand("go e");
 					} else if ((SWCHA&0x04) == 0x00) {
@@ -208,6 +219,10 @@ int main() {
 				}
 			}
 
+			if (redrawScreen) {
+				drawTextInput();
+				drawKeyboard();
+			}
 			setDataStreams();
 		}
 		break;
@@ -240,8 +255,8 @@ void initialise() {
 	inputIdx = 0;
 	selectedKey = minSelectedKey;
 	SWCHA = RAM[_SWCHA];
-	INPT4 = RAM[_INPT4];
-	INPT5 = RAM[_INPT5];
+	leftPlayerFire = (RAM[_INPT4]&0x80) == 0x00;
+	rightPlayerFire = (RAM[_INPT5]&0x80) == 0x00;
 
 	drawTextInput();
 	drawKeyboard();
