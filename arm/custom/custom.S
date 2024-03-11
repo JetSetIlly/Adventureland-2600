@@ -21,7 +21,7 @@ Custom:
 .thumb
 
   /* Fetch value from CU header */
-  ldr     r0, =0x40000024
+  ldr     r0, =0x10000024
   ldr     r2, [r0]
   
   /* Skip if data already copied */

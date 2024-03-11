@@ -7,18 +7,18 @@ ENTRY(Custom)
 /* LPC2103 memory areas  */
 MEMORY 
 {
-    boot (RX)   : ORIGIN = 0x800     , LENGTH = 0x80    /* C-runtime booter */
-    C_code (RX) : ORIGIN = 0x880     , LENGTH = 0x6780  /* C code (26K) */
+    boot (RX)   : ORIGIN = 0x20000800     , LENGTH = 0x80    /* C-runtime booter */
+    C_code (RX) : ORIGIN = 0x20000880     , LENGTH = 0x6780  /* C code (26K) */
 
-    ram         : ORIGIN = 0x40001800, LENGTH = 0x800   /* 2K free RAM */
-/*    ram         : ORIGIN = 0x40001400, LENGTH = 0xC00 */  /* 3K free RAM, took 1K from Display Data */
-/*    ram         : ORIGIN = 0x40001300, LENGTH = 0xD00 */  /* 3.25K free RAM, took 1.25K from Display Data */
-/*    ram         : ORIGIN = 0x400012C0, LENGTH = 0xD40 */  /* 3392 bytes free RAM, took 1344 from Display Data */
+    ram         : ORIGIN = 0x10001800, LENGTH = 0x800   /* 2K free RAM */
+/*    ram         : ORIGIN = 0x10001400, LENGTH = 0xC00 */  /* 3K free RAM, took 1K from Display Data */
+/*    ram         : ORIGIN = 0x10001300, LENGTH = 0xD00 */  /* 3.25K free RAM, took 1.25K from Display Data */
+/*    ram         : ORIGIN = 0x100012C0, LENGTH = 0xD40 */  /* 3392 bytes free RAM, took 1344 from Display Data */
 
 }
 
 /* Global symbol _stack_end */
-_stack_end = 0x40001FDC;
+_stack_end = 0x10001FDC;
 
 /* Output sections  */
 SECTIONS

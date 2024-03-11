@@ -14,7 +14,7 @@ Description: CDF bankswitching utilities
 // unsigned char * const _BANK0=(unsigned char*)0x1000;
 
 // Raw queue pointers
-void* DDR = (void*)0x40000800;
+void* DDR = (void*)0x10000800;
 #define RAM ((unsigned char*)DDR)
 #define RAM_INT ((unsigned int*)DDR)
 #define RAM_SINT ((unsigned short int*)DDR)
@@ -24,9 +24,9 @@ void* DDR = (void*)0x40000800;
 #define ROM_SINT ((unsigned short int*)0)
 
 // Queue variables
-unsigned int* const _QPTR=(unsigned int*)0x40000098;
-unsigned int* const _QINC=(unsigned int*)0x40000124;
-unsigned int* const _WAVEFORM=(unsigned int*)0x400001B0;
+unsigned int* const _QPTR=(unsigned int*)0x10000098;
+unsigned int* const _QINC=(unsigned int*)0x10000124;
+unsigned int* const _WAVEFORM=(unsigned int*)0x100001B0;
 
 void setPointer(int fetcher, unsigned int offset);
 
@@ -47,7 +47,7 @@ inline void setIncrement(int fetcher, unsigned char whole, unsigned char frac) {
 
 // Set waveform (32-byte offset in ROM)
 inline void setWaveform(int wave, unsigned char offset) {
-  _WAVEFORM[wave] = 0x40000800 + (offset << 5);
+  _WAVEFORM[wave] = 0x10000800 + (offset << 5);
 }
 
 // Set DA sample address
@@ -57,7 +57,7 @@ inline void setSamplePtr(unsigned int address) {
 
 // Set note frequency
 void setNote(int note, unsigned int freq) {
-  unsigned int setNoteFn = 0x00000751;
+  unsigned int setNoteFn = 0x20000751;
   asm volatile(
     "mov r2, %0\n\t"
     "mov r3, %1\n\t"
@@ -70,7 +70,7 @@ void setNote(int note, unsigned int freq) {
 
 // Reset waveform
 void resetWave(int wave) {
-  unsigned int resetWaveFn = 0x00000755;
+  unsigned int resetWaveFn = 0x20000755;
   asm volatile(
     "mov r2, %0\n\t"
     "mov r4, %1\n\t"
@@ -82,7 +82,7 @@ void resetWave(int wave) {
 
 // Get waveform pointer
 unsigned int getWavePtr(int wave) {
-  unsigned int getWavePtrFn = 0x00000759;
+  unsigned int getWavePtrFn = 0x20000759;
   unsigned int ptr;
   asm volatile(
     "mov r2, %1\n\t"
@@ -109,7 +109,7 @@ unsigned int getWavePtr(int wave) {
 // 30 = 4 bytes
 // 31 = 2 bytes
 void setWaveSize(int wave, unsigned int size) {
-  unsigned int setWaveSizeFn = 0x0000075d;
+  unsigned int setWaveSizeFn = 0x2000075d;
   if (size < 20 || size > 31) return;
   asm volatile(
     "mov r2, %0\n\t"
